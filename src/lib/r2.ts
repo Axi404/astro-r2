@@ -146,22 +146,29 @@ export class R2Service {
     await this.client.send(command);
   }
 
-  async listImages(prefix: string = '', maxKeys: number = 100): Promise<ImageInfo[]> {
+  async listImages(prefix: string = '', maxKeys: number = 100, offset: number = 0): Promise<ImageInfo[]> {
+    // R2/S3 doesn't directly support offset, so we need to fetch more and slice
+    // For better performance, we could implement marker-based pagination in the future
+    const fetchLimit = maxKeys + offset;
+    
     const command = new ListObjectsV2Command({
       Bucket: this.config.bucketName,
       Prefix: prefix,
-      MaxKeys: maxKeys,
+      MaxKeys: Math.min(fetchLimit, 1000), // R2 max limit is 1000
     });
 
     const response = await this.client.send(command);
     
-    return (response.Contents || []).map(object => ({
+    const allImages = (response.Contents || []).map(object => ({
       key: object.Key!,
       url: `${this.config.publicUrl}/${object.Key}`,
       size: object.Size || 0,
       mimeType: mimeTypes.lookup(object.Key!) || 'application/octet-stream',
       uploadedAt: object.LastModified || new Date(),
     }));
+
+    // Apply offset and limit
+    return allImages.slice(offset, offset + maxKeys);
   }
 
   async getPresignedUrl(key: string, expiresIn: number = 3600): Promise<string> {

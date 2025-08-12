@@ -8,9 +8,10 @@ export const GET: APIRoute = async ({ url }) => {
 
     const searchParams = new URL(url).searchParams;
     const limit = parseInt(searchParams.get('limit') || '50');
+    const offset = parseInt(searchParams.get('offset') || '0');
     const prefix = searchParams.get('prefix') || '';
 
-    const images = await r2Service.listImages(prefix, limit);
+    const images = await r2Service.listImages(prefix, limit, offset);
 
     return new Response(JSON.stringify({
       success: true,

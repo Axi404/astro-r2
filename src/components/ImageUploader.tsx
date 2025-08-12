@@ -364,12 +364,12 @@ export default function ImageUploader() {
           <div className="mb-6 space-y-4">
             {/* 文件名选项 */}
             <div>
-              <label className="flex items-center space-x-2">
+              <label className="flex items-center space-x-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={useHashName}
                   onChange={(e) => setUseHashName(e.target.checked)}
-                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                 />
                 <span className="text-sm font-medium text-gray-700">
                   使用随机文件名 (Hash)
@@ -382,12 +382,12 @@ export default function ImageUploader() {
 
             {/* WebP 压缩选项 */}
             <div>
-              <label className="flex items-center space-x-2">
+              <label className="flex items-center space-x-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={enableWebpCompression}
                   onChange={(e) => setEnableWebpCompression(e.target.checked)}
-                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                 />
                 <span className="text-sm font-medium text-gray-700">
                   启用 WebP 压缩

@@ -21,19 +21,29 @@ export default function ImageGallery() {
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalImages, setTotalImages] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const imagesPerPage = 1000;
 
   useEffect(() => {
-    loadImages();
+    loadImages(1);
   }, []);
 
-  const loadImages = async () => {
+  useEffect(() => {
+    loadImages(currentPage);
+  }, [currentPage]);
+
+  const loadImages = async (page: number = 1) => {
     try {
       setLoading(true);
-      const response = await fetch('/api/images');
+      const offset = (page - 1) * imagesPerPage;
+      const response = await fetch(`/api/images?limit=${imagesPerPage}&offset=${offset}`);
       const result: ImagesResponse = await response.json();
       
       if (result.success && result.data) {
         setImages(result.data);
+        setHasMore(result.data.length === imagesPerPage);
         setError(null);
         setErrorDetails(null);
       } else {
@@ -121,7 +131,7 @@ export default function ImageGallery() {
     }
 
     // 重新加载图片列表
-    await loadImages();
+    await loadImages(currentPage);
     setSelectedImages(new Set());
   };
 
@@ -273,7 +283,7 @@ export default function ImageGallery() {
             </div>
             
             <button
-              onClick={loadImages}
+              onClick={() => loadImages(currentPage)}
               className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
             >
               刷新
@@ -306,26 +316,36 @@ export default function ImageGallery() {
                 <img 
                   src={image.url} 
                   alt={image.key.split('/').pop()} 
-                  className="w-full h-48 object-cover"
+                  className="w-full h-48 object-cover cursor-pointer"
+                  onClick={() => toggleImageSelection(image.key)}
                 />
                 <div className="absolute top-2 left-2">
                   <input
                     type="checkbox"
                     checked={selectedImages.has(image.key)}
                     onChange={() => toggleImageSelection(image.key)}
-                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                   />
                 </div>
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity space-x-2">
+                {selectedImages.has(image.key) && (
+                  <div className="absolute inset-0 bg-blue-500 bg-opacity-20 border-2 border-blue-500"></div>
+                )}
+                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center pointer-events-none">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity space-x-2 pointer-events-auto">
                     <button
-                      onClick={() => copyToClipboard(image.url)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyToClipboard(image.url);
+                      }}
                       className="px-2 py-1 text-xs bg-white text-gray-800 rounded hover:bg-gray-100"
                     >
                       复制链接
                     </button>
                     <button
-                      onClick={() => deleteImage(image.key)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteImage(image.key);
+                      }}
                       className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
                     >
                       删除
@@ -355,7 +375,7 @@ export default function ImageGallery() {
                       type="checkbox"
                       checked={selectedImages.size === images.length && images.length > 0}
                       onChange={selectAllImages}
-                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                     />
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -386,14 +406,15 @@ export default function ImageGallery() {
                         type="checkbox"
                         checked={selectedImages.has(image.key)}
                         onChange={() => toggleImageSelection(image.key)}
-                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                       />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <img 
                         src={image.url} 
                         alt={image.key.split('/').pop()} 
-                        className="w-12 h-12 object-cover rounded"
+                        className="w-12 h-12 object-cover rounded cursor-pointer"
+                        onClick={() => toggleImageSelection(image.key)}
                       />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -432,6 +453,37 @@ export default function ImageGallery() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* 分页 */}
+      {images.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-600">
+              第 {currentPage} 页，共 {images.length} 张图片
+              {hasMore && " (可能还有更多)"}
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                上一页
+              </button>
+              <span className="px-3 py-1 text-sm bg-blue-600 text-white rounded">
+                {currentPage}
+              </span>
+              <button
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                disabled={!hasMore}
+                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                下一页
+              </button>
+            </div>
           </div>
         </div>
       )}

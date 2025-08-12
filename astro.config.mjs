@@ -8,10 +8,17 @@ import vercel from "@astrojs/vercel";
 export default defineConfig({
   integrations: [react(), tailwind()],
   output: 'server',
-  adapter: vercel(), 
+  adapter: vercel(),
   vite: {
     define: {
-      'process.env': process.env
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
+      'process.env.PUBLIC_URL': JSON.stringify(process.env.PUBLIC_URL),
+    },
+    ssr: {
+      external: ['sharp']
+    },
+    optimizeDeps: {
+      exclude: ['sharp']
     }
   }
 });

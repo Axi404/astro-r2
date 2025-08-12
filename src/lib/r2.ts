@@ -1,7 +1,6 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'crypto';
-import sharp from 'sharp';
 import mimeTypes from 'mime-types';
 
 export interface R2Config {

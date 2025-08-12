@@ -332,29 +332,34 @@ export default function ImageGallery() {
                   />
                 </div>
                 {selectedImages.has(image.key) && (
-                  <div className="absolute inset-0 bg-blue-500 bg-opacity-20 border-2 border-blue-500"></div>
+                  <div className="absolute inset-0 bg-blue-500 bg-opacity-20 border-2 border-blue-500 pointer-events-none"></div>
                 )}
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center pointer-events-none">
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity space-x-2 pointer-events-auto">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        copyToClipboard(image.url);
-                      }}
-                      className="px-2 py-1 text-xs bg-white text-gray-800 rounded hover:bg-gray-100"
-                    >
-                      复制链接
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteImage(image.key);
-                      }}
-                      className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                    >
-                      删除
-                    </button>
-                  </div>
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity space-x-1 pointer-events-auto">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      copyToClipboard(image.url);
+                    }}
+                    className="p-1.5 text-xs bg-white text-gray-800 rounded-full shadow-lg hover:bg-gray-100 transition-colors"
+                    title="复制链接"
+                  >
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"></path>
+                      <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"></path>
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteImage(image.key);
+                    }}
+                    className="p-1.5 text-xs bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-colors"
+                    title="删除"
+                  >
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </button>
                 </div>
               </div>
               <div className="p-3">

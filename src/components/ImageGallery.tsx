@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { ToastManager } from './Toast';
+import { useToast } from '../hooks/useToast';
 
 interface ImageInfo {
   key: string;
@@ -18,6 +20,7 @@ export default function ImageGallery() {
   const [images, setImages] = useState<ImageInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toasts, removeToast, showSuccess, showError } = useToast();
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -158,9 +161,10 @@ export default function ImageGallery() {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      alert('链接已复制到剪贴板');
+      showSuccess('链接已复制到剪贴板');
     } catch (error) {
       console.error('复制失败:', error);
+      showError('复制失败，请手动复制');
     }
   };
 
@@ -495,6 +499,9 @@ export default function ImageGallery() {
           </div>
         </div>
       )}
+      
+      {/* Toast Manager */}
+      <ToastManager toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

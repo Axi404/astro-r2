@@ -1,4 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
+import { ToastManager } from './Toast';
+import { useToast } from '../hooks/useToast';
 
 interface UploadedImage {
   key: string;
@@ -33,6 +35,7 @@ export default function ImageUploader() {
   const [useHashName, setUseHashName] = useState(false);
   const [enableWebpCompression, setEnableWebpCompression] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toasts, removeToast, showSuccess, showError } = useToast();
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -336,9 +339,10 @@ export default function ImageUploader() {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      alert('链接已复制到剪贴板');
+      showSuccess('链接已复制到剪贴板');
     } catch (error) {
       console.error('复制失败:', error);
+      showError('复制失败，请手动复制');
     }
   };
 
@@ -636,6 +640,9 @@ export default function ImageUploader() {
           </div>
         </div>
       )}
+      
+      {/* Toast Manager */}
+      <ToastManager toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

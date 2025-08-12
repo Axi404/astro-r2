@@ -45,6 +45,7 @@ R2_SECRET_ACCESS_KEY=你的R2秘密访问密钥
 R2_BUCKET_NAME=你的R2存储桶名称
 R2_ENDPOINT=你的终结点
 R2_PUBLIC_URL=https://你的自定义域名.com # 或者你的桶的默认 url
+ADMIN_PASSWORD=网页的登录密码，自定义
 ```
 
 其中 R2_ACCOUNT_ID 为账户 ID：

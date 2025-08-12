@@ -1,7 +1,13 @@
 import type { APIRoute } from 'astro';
 import { R2Service, getR2Config } from '../../lib/r2';
+import { requireAuth } from '../../lib/auth';
 
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async (context) => {
+  // 检查认证
+  const authError = requireAuth(context);
+  if (authError) return authError;
+  
+  const { url } = context;
   try {
     const config = getR2Config();
     const r2Service = new R2Service(config);
@@ -33,7 +39,10 @@ export const GET: APIRoute = async ({ url }) => {
   }
 };
 
-export const DELETE: APIRoute = async ({ request }) => {
+export const DELETE: APIRoute = async (context) => {
+  const authError = requireAuth(context);
+  if (authError) return authError;
+  const { request } = context;
   try {
     const config = getR2Config();
     const r2Service = new R2Service(config);

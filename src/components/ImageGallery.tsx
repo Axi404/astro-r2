@@ -354,7 +354,10 @@ export default function ImageGallery() {
                 </div>
               </div>
               <div className="p-3">
-                <div className="text-sm font-medium text-gray-900 truncate">
+                <div 
+                  className="text-sm font-medium text-gray-900 truncate cursor-help"
+                  title={image.key.split('/').pop()}
+                >
                   {image.key.split('/').pop()}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
@@ -381,7 +384,7 @@ export default function ImageGallery() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     预览
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">
                     文件名
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -418,7 +421,12 @@ export default function ImageGallery() {
                       />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {image.key.split('/').pop()}
+                      <div 
+                        className="max-w-xs truncate cursor-help" 
+                        title={image.key.split('/').pop()}
+                      >
+                        {image.key.split('/').pop()}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatFileSize(image.size)}

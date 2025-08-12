@@ -47,45 +47,9 @@ MAX_FILE_SIZE=10485760
 3. 生成 API Token，确保有 R2 的读写权限
 4. （可选）设置自定义域名以获得更好的访问速度
 
-### 3. 部署到 Cloudflare Pages
+### 3. 部署到 Vercel
 
-#### 方法一：通过 GitHub 连接（推荐）
 
-1. 将代码推送到 GitHub 仓库
-2. 在 Cloudflare Pages 中连接你的 GitHub 仓库
-3. 设置构建命令：`npm run build`
-4. 设置输出目录：`dist`
-5. 添加环境变量
-6. 部署
-
-#### 方法二：使用 Wrangler CLI
-
-```bash
-# 安装依赖
-npm install
-
-# 构建项目
-npm run build
-
-# 部署到 Cloudflare Pages
-npx wrangler pages deploy dist
-```
-
-### 4. 本地开发
-
-```bash
-# 安装依赖
-npm install
-
-# 复制环境变量文件
-cp env.example .env
-
-# 填写你的 R2 配置信息
-# 编辑 .env 文件
-
-# 启动开发服务器
-npm run dev
-```
 
 ## 使用方法
 
@@ -131,22 +95,6 @@ astro-r2/
 ├── wrangler.toml          # Cloudflare 配置
 └── package.json
 ```
-
-## 技术栈
-
-- **前端框架**：Astro + React
-- **样式**：Tailwind CSS
-- **部署**：Cloudflare Pages
-- **存储**：Cloudflare R2
-- **图片处理**：Sharp
-- **文件上传**：AWS SDK v3
-
-## 注意事项
-
-1. 确保 R2 存储桶有正确的 CORS 配置
-2. 自定义域名可以提高访问速度，但不是必需的
-3. 默认文件大小限制为 10MB，可通过环境变量调整
-4. WebP 压缩可能不适用于所有图片格式，失败时会使用原格式
 
 ## 许可证
 

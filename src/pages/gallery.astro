@@ -1,0 +1,19 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ImageGallery from '../components/ImageGallery';
+---
+
+<Layout title="R2 图床 - 图片管理">
+  <div class="space-y-8">
+    <div class="text-center">
+      <h1 class="text-3xl font-bold text-gray-900 mb-4">
+        图片管理
+      </h1>
+      <p class="text-lg text-gray-600">
+        查看、管理和删除您上传的图片
+      </p>
+    </div>
+
+    <ImageGallery client:load />
+  </div>
+</Layout>

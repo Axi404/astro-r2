@@ -1,0 +1,31 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ImageUploader from '../components/ImageUploader';
+---
+
+<Layout title="R2 图床 - 上传图片">
+  <div class="space-y-8">
+    <div class="text-center">
+      <h1 class="text-4xl font-bold text-gray-900 mb-4">
+        R2 图床服务
+      </h1>
+      <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+        基于 Cloudflare R2 的高性能图床，支持拖拽上传、剪贴板粘贴、WebP 压缩和 Hash 文件名
+      </p>
+    </div>
+
+    <ImageUploader client:load />
+
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+      <h3 class="text-lg font-semibold text-blue-900 mb-2">功能特性</h3>
+      <ul class="text-blue-800 space-y-1">
+        <li>• 支持拖拽文件上传</li>
+        <li>• 支持剪贴板图片粘贴 (Ctrl+V)</li>
+        <li>• 自动压缩为 WebP 格式，大幅减少文件大小</li>
+        <li>• 可选的 Hash 文件名，避免文件名冲突</li>
+        <li>• 基于 Cloudflare R2 的全球 CDN 加速</li>
+        <li>• 支持多种图片格式：JPG, PNG, GIF, WebP, SVG</li>
+      </ul>
+    </div>
+  </div>
+</Layout>

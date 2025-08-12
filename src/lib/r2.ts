@@ -70,6 +70,7 @@ export class R2Service {
     }
 
     try {
+      const sharp = (await import('sharp')).default;
       const webpBuffer = await sharp(buffer)
         .webp({ quality: options.quality || 80 })
         .toBuffer();

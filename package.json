@@ -8,12 +8,12 @@
     "start": "react-router dev",
     "build": "react-router build",
     "preview": "bun run build && vite preview",
-    "deploy": "bun run build && wrangler deploy",
     "check": "react-router typegen && tsc -b",
     "test": "bun test",
     "verify": "bun run test && bun run check && bun run build"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.864.0",
     "@types/mime-types": "^2.1.4",
     "isbot": "^5.1.31",
     "mime-types": "^2.1.35",
@@ -23,9 +23,8 @@
     "tailwindcss": "^3.4.17"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.13.5",
-    "@cloudflare/workers-types": "^4.20260224.0",
     "@react-router/dev": "^7.13.1",
+    "@vercel/react-router": "latest",
     "@types/node": "^20.19.10",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
@@ -33,7 +32,6 @@
     "postcss": "^8.5.3",
     "typescript": "^5.9.2",
     "vite": "^6.3.6",
-    "vite-tsconfig-paths": "^5.1.4",
-    "wrangler": "^4.40.0"
+    "vite-tsconfig-paths": "^5.1.4"
   }
 }

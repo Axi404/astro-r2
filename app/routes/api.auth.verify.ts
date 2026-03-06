@@ -2,8 +2,8 @@ import type { Route } from './+types/api.auth.verify';
 
 import { isAuthenticated } from '~/lib/session.server';
 
-export async function loader({ request, context }: Route.LoaderArgs) {
-  const authenticated = await isAuthenticated(request, context);
+export async function loader({ request }: Route.LoaderArgs) {
+  const authenticated = await isAuthenticated(request);
 
   return Response.json(
     { authenticated },

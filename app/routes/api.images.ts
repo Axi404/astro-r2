@@ -4,15 +4,15 @@ import { parseDeleteKeys, parseImageListQuery } from '~/lib/images-api';
 import { deleteImages, listImages } from '~/lib/r2.server';
 import { ensureAuthenticatedApiRequest } from '~/lib/session.server';
 
-export async function loader({ request, context }: Route.LoaderArgs) {
-  const authError = await ensureAuthenticatedApiRequest(request, context);
+export async function loader({ request }: Route.LoaderArgs) {
+  const authError = await ensureAuthenticatedApiRequest(request);
   if (authError) {
     return authError;
   }
 
   try {
     const { limit, cursor, prefix } = parseImageListQuery(new URL(request.url));
-    const result = await listImages(context.cloudflare.env, prefix, limit, cursor);
+    const result = await listImages(prefix, limit, cursor);
 
     return Response.json(
       {
@@ -46,8 +46,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   }
 }
 
-export async function action({ request, context }: Route.ActionArgs) {
-  const authError = await ensureAuthenticatedApiRequest(request, context);
+export async function action({ request }: Route.ActionArgs) {
+  const authError = await ensureAuthenticatedApiRequest(request);
   if (authError) {
     return authError;
   }
@@ -74,7 +74,7 @@ export async function action({ request, context }: Route.ActionArgs) {
       );
     }
 
-    const result = await deleteImages(context.cloudflare.env, keys);
+    const result = await deleteImages(keys);
 
     return Response.json(
       {

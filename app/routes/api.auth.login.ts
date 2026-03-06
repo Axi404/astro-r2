@@ -2,7 +2,7 @@ import type { Route } from './+types/api.auth.login';
 
 import { commitAuthenticatedSession, getSafeNextPath, verifyPassword } from '~/lib/session.server';
 
-export async function action({ request, context }: Route.ActionArgs) {
+export async function action({ request }: Route.ActionArgs) {
   if (request.method !== 'POST') {
     return Response.json({ error: 'Method not allowed' }, { status: 405 });
   }
@@ -22,7 +22,7 @@ export async function action({ request, context }: Route.ActionArgs) {
       );
     }
 
-    if (!verifyPassword(password, context)) {
+    if (!verifyPassword(password)) {
       return Response.json(
         { error: 'Invalid password' },
         {
@@ -32,7 +32,7 @@ export async function action({ request, context }: Route.ActionArgs) {
       );
     }
 
-    const cookie = await commitAuthenticatedSession(context);
+    const cookie = await commitAuthenticatedSession();
 
     return Response.json(
       {

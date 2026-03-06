@@ -3,7 +3,6 @@
   "include": [
     ".react-router/types/**/*",
     "app/**/*",
-    "workers/**/*",
     "env.d.ts"
   ],
   "exclude": ["app/**/*.test.ts"],
@@ -11,7 +10,7 @@
     "composite": true,
     "strict": true,
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
-    "types": ["vite/client", "@cloudflare/workers-types", "node"],
+    "types": ["vite/client", "node"],
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "bundler",

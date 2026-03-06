@@ -7,11 +7,11 @@ import { getSafeNextPath, isAuthenticated } from '~/lib/session.server';
 
 export const meta: Route.MetaFunction = () => [{ title: '登录 - Lightframe Archive' }];
 
-export async function loader({ request, context }: Route.LoaderArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const nextPath = getSafeNextPath(url.searchParams.get('next'));
 
-  if (await isAuthenticated(request, context)) {
+  if (await isAuthenticated(request)) {
     throw redirect(nextPath);
   }
 

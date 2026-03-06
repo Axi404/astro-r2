@@ -1,3 +1,10 @@
+import {
+  DeleteObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
+import { randomUUID } from 'node:crypto';
 import mimeTypes from 'mime-types';
 
 export interface UploadOptions {
@@ -26,20 +33,47 @@ export interface DeleteImagesResult {
   }>;
 }
 
-function getPublicUrlBase(env: Env): string {
-  if (!env.R2_PUBLIC_URL) {
-    throw new Error('R2_PUBLIC_URL is not configured');
+type RequiredEnvKey =
+  | 'R2_ACCESS_KEY_ID'
+  | 'R2_SECRET_ACCESS_KEY'
+  | 'R2_BUCKET_NAME'
+  | 'R2_ENDPOINT'
+  | 'R2_PUBLIC_URL';
+
+let r2ClientSingleton: S3Client | null = null;
+
+function getRequiredEnv(key: RequiredEnvKey): string {
+  const value = process.env[key]?.trim();
+
+  if (!value) {
+    throw new Error(`${key} is not configured`);
   }
 
-  return env.R2_PUBLIC_URL.replace(/\/+$/, '');
+  return value;
 }
 
-function getBucket(env: Env): R2Bucket {
-  if (!env.IMAGES_BUCKET) {
-    throw new Error('IMAGES_BUCKET binding is not configured');
+function getR2Client(): S3Client {
+  if (!r2ClientSingleton) {
+    r2ClientSingleton = new S3Client({
+      region: 'auto',
+      endpoint: getRequiredEnv('R2_ENDPOINT'),
+      credentials: {
+        accessKeyId: getRequiredEnv('R2_ACCESS_KEY_ID'),
+        secretAccessKey: getRequiredEnv('R2_SECRET_ACCESS_KEY'),
+      },
+      forcePathStyle: true,
+    });
   }
 
-  return env.IMAGES_BUCKET;
+  return r2ClientSingleton;
+}
+
+function getBucketName(): string {
+  return getRequiredEnv('R2_BUCKET_NAME');
+}
+
+function getPublicUrlBase(): string {
+  return getRequiredEnv('R2_PUBLIC_URL').replace(/\/+$/, '');
 }
 
 function encodeObjectKey(key: string): string {
@@ -53,7 +87,7 @@ function generateFileName(originalName: string, useHash = false): string {
   const ext = originalName.includes('.') ? originalName.split('.').pop() || '' : '';
 
   if (useHash) {
-    const hash = crypto.randomUUID().replace(/-/g, '');
+    const hash = randomUUID().replace(/-/g, '');
     return ext ? `${hash}.${ext}` : hash;
   }
 
@@ -70,83 +104,85 @@ function toImageInfo(
   key: string,
   size: number,
   uploadedAt: Date,
-  mimeType: string,
-  env: Env
+  mimeType: string
 ): ImageInfo {
   return {
     key,
-    url: `${getPublicUrlBase(env)}/${encodeObjectKey(key)}`,
+    url: `${getPublicUrlBase()}/${encodeObjectKey(key)}`,
     size,
     mimeType,
     uploadedAt,
   };
 }
 
-export async function uploadImage(
-  env: Env,
-  file: File,
-  options: UploadOptions = {}
-): Promise<ImageInfo> {
+export async function uploadImage(file: File, options: UploadOptions = {}): Promise<ImageInfo> {
   const extFromMime = mimeTypes.extension(file.type) || 'bin';
   const normalizedOriginalName = file.name.includes('.')
     ? file.name
     : `${file.name}.${extFromMime}`;
   const key = generateFileName(normalizedOriginalName, options.useHashName);
-  const bucket = getBucket(env);
+  const body = Buffer.from(await file.arrayBuffer());
 
-  await bucket.put(key, await file.arrayBuffer(), {
-    httpMetadata: {
-      contentType: file.type || getMimeType(key),
-      cacheControl: 'public, max-age=31536000',
-    },
-  });
-
-  const object = await bucket.head(key);
-  if (!object) {
-    throw new Error('Uploaded object could not be read back from R2');
-  }
+  await getR2Client().send(
+    new PutObjectCommand({
+      Bucket: getBucketName(),
+      Key: key,
+      Body: body,
+      ContentType: file.type || getMimeType(key),
+      CacheControl: 'public, max-age=31536000',
+    })
+  );
 
   return toImageInfo(
-    object.key,
-    object.size,
-    object.uploaded,
-    getMimeType(object.key, object.httpMetadata?.contentType || null),
-    env
+    key,
+    body.length,
+    new Date(),
+    file.type || getMimeType(key)
   );
 }
 
 export async function listImages(
-  env: Env,
   prefix = '',
   maxKeys = 60,
   cursor?: string | null
 ): Promise<ListImagesResult> {
-  const bucket = getBucket(env);
-  const result = await bucket.list({
-    prefix: prefix || undefined,
-    limit: Math.min(Math.max(maxKeys, 1), 1000),
-    cursor: cursor || undefined,
-  });
+  const result = await getR2Client().send(
+    new ListObjectsV2Command({
+      Bucket: getBucketName(),
+      Prefix: prefix || undefined,
+      MaxKeys: Math.min(Math.max(maxKeys, 1), 1000),
+      ContinuationToken: cursor || undefined,
+    })
+  );
 
   return {
-    images: result.objects.map((object) =>
-      toImageInfo(
-        object.key,
-        object.size,
-        object.uploaded,
-        getMimeType(object.key),
-        env
-      )
-    ),
-    nextCursor: result.truncated ? result.cursor || null : null,
-    hasMore: result.truncated,
+    images: (result.Contents || [])
+      .filter((object): object is typeof object & { Key: string } => Boolean(object.Key))
+      .map((object) =>
+        toImageInfo(
+          object.Key,
+          object.Size || 0,
+          object.LastModified || new Date(),
+          getMimeType(object.Key)
+        )
+      ),
+    nextCursor: result.NextContinuationToken || null,
+    hasMore: Boolean(result.IsTruncated && result.NextContinuationToken),
   };
 }
 
-export async function deleteImages(env: Env, keys: string[]): Promise<DeleteImagesResult> {
+async function deleteImage(key: string) {
+  await getR2Client().send(
+    new DeleteObjectCommand({
+      Bucket: getBucketName(),
+      Key: key,
+    })
+  );
+}
+
+export async function deleteImages(keys: string[]): Promise<DeleteImagesResult> {
   const uniqueKeys = [...new Set(keys.map((key) => key.trim()).filter(Boolean))];
-  const bucket = getBucket(env);
-  const results = await Promise.allSettled(uniqueKeys.map((key) => bucket.delete(key)));
+  const results = await Promise.allSettled(uniqueKeys.map((key) => deleteImage(key)));
 
   return results.reduce<DeleteImagesResult>(
     (accumulator, result, index) => {
@@ -170,8 +206,8 @@ export async function deleteImages(env: Env, keys: string[]): Promise<DeleteImag
   );
 }
 
-export function getMaxFileSize(env: Env): number {
-  const value = env.MAX_FILE_SIZE || '10485760';
+export function getMaxFileSize(): number {
+  const value = process.env.MAX_FILE_SIZE || '10485760';
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : 10485760;
 }

@@ -5,8 +5,8 @@ import { ensureAuthenticatedApiRequest } from '~/lib/session.server';
 
 const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
 
-export async function action({ request, context }: Route.ActionArgs) {
-  const authError = await ensureAuthenticatedApiRequest(request, context);
+export async function action({ request }: Route.ActionArgs) {
+  const authError = await ensureAuthenticatedApiRequest(request);
   if (authError) {
     return authError;
   }
@@ -29,7 +29,7 @@ export async function action({ request, context }: Route.ActionArgs) {
       );
     }
 
-    const maxSize = getMaxFileSize(context.cloudflare.env);
+    const maxSize = getMaxFileSize();
     if (file.size > maxSize) {
       return Response.json(
         { error: `File size exceeds limit of ${maxSize / 1024 / 1024}MB` },
@@ -50,7 +50,7 @@ export async function action({ request, context }: Route.ActionArgs) {
       );
     }
 
-    const imageInfo = await uploadImage(context.cloudflare.env, file, {
+    const imageInfo = await uploadImage(file, {
       useHashName: formData.get('useHashName') === 'true',
     });
 

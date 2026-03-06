@@ -1,21 +1,25 @@
 # Lightframe Archive
 
-基于 React Router、Cloudflare Workers 和 Cloudflare R2 的图床后台，包含登录保护、批量管理、拖拽上传和浏览器侧 WebP 压缩预览。
+基于 React Router、Vercel 和 Cloudflare R2 的图床后台，包含登录保护、批量管理、拖拽上传和浏览器侧 WebP 压缩预览。
 
 ## 环境变量
 
-当前版本不再使用 Astro/Vercel，也不再使用单独的 `SESSION_SECRET`。
+当前版本部署到 Vercel，不再使用 Astro，也不再使用单独的 `SESSION_SECRET`。
 会话签名直接由 `ADMIN_PASSWORD` 派生。
 
-在 Cloudflare Workers / Wrangler 中配置以下变量或 secret：
+在本地环境或 Vercel Project Settings 中配置以下变量：
 
 ```bash
+R2_ACCESS_KEY_ID=Cloudflare R2 S3 Access Key ID
+R2_SECRET_ACCESS_KEY=Cloudflare R2 S3 Secret Access Key
+R2_BUCKET_NAME=你的 R2 bucket 名称
+R2_ENDPOINT=https://<accountid>.r2.cloudflarestorage.com
 R2_PUBLIC_URL=https://你的图片访问域名
 ADMIN_PASSWORD=后台登录密码
 MAX_FILE_SIZE=10485760 # 可选，默认 10MB
 ```
 
-同时需要在 [wrangler.jsonc](/home/gaoning/repos/Github/astro-r2/wrangler.jsonc) 里把 `IMAGES_BUCKET` 绑定到真实的 R2 bucket，并把 `R2_PUBLIC_URL` 改成真实的公开访问域名。
+其中 `R2_ENDPOINT` 使用 Cloudflare R2 的 S3 API endpoint，`R2_PUBLIC_URL` 使用你给 bucket 配置的公开访问域名。
 
 ## 本地开发
 
@@ -34,11 +38,18 @@ bun run dev
 
 ## 部署步骤
 
-1. 在 Cloudflare R2 中创建存储桶。
-2. 为存储桶配置公开访问域名，作为 `R2_PUBLIC_URL`。
-3. 在 [wrangler.jsonc](/home/gaoning/repos/Github/astro-r2/wrangler.jsonc) 中把 `IMAGES_BUCKET` 绑定到实际 bucket。
-4. 通过 Wrangler 或 Cloudflare Dashboard 配置 `ADMIN_PASSWORD` 和可选的 `MAX_FILE_SIZE`。
-5. 执行 `bun run deploy`，部署完成后访问 `/login`，使用 `ADMIN_PASSWORD` 登录。
+1. 在 Cloudflare R2 中创建存储桶，并记录 bucket 名称。
+2. 在 Cloudflare R2 的 S3 API 页面创建 Access Key，拿到 `R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY` 和 `R2_ENDPOINT`。
+3. 给 bucket 配置公开访问域名，作为 `R2_PUBLIC_URL`。
+4. 在 Vercel 项目的 Environment Variables 中配置全部变量。
+5. 把仓库重新部署到 Vercel；Vercel 会基于 `bun.lock` 和 React Router preset 自动构建。
+6. 部署完成后访问 `/login`，使用 `ADMIN_PASSWORD` 登录。
+
+## Vercel 配置说明
+
+- Framework Preset 保持自动检测即可，这个仓库已经通过 `@vercel/react-router` preset 适配。
+- 不需要 `wrangler.jsonc`、Workers bucket binding，也不需要 `SESSION_SECRET`。
+- 运行时通过 S3 兼容 API 访问 R2，所以只依赖上面的环境变量。
 
 ## 功能概览
 

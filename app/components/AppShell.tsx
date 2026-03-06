@@ -79,7 +79,7 @@ export default function AppShell({ authenticated = false, children }: AppShellPr
               Built for fast image dispatch and careful archive work
             </p>
             <p className="text-sm text-[rgba(240,226,204,0.58)]">
-              React Router + Cloudflare Workers + R2 object storage
+              React Router + Vercel + Cloudflare R2 object storage
             </p>
           </div>
           <div className="text-xs uppercase tracking-[0.28em] text-[rgba(240,226,204,0.44)]">

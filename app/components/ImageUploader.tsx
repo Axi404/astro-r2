@@ -555,14 +555,14 @@ export default function ImageUploader() {
       <section className="panel panel-light overflow-hidden p-6 sm:p-8">
         <div className="grid gap-5 xl:grid-cols-[1.16fr_0.84fr]">
           <div className="grid gap-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="max-w-2xl">
                 <p className="eyebrow text-[var(--muted)]">Upload Workbench</p>
                 <p className="mt-3 text-sm leading-8 text-[var(--ink-soft)] sm:text-base">
                   直接拖拽、粘贴或多选图片。入口只负责接收文件，命名和压缩留在右侧收束，不再把说明堆在操作前面。
                 </p>
               </div>
-              <a href="/gallery" className="button-ghost self-start">
+              <a href="/gallery" className="button-ghost shrink-0 self-start whitespace-nowrap px-5 text-center">
                 查看图库
               </a>
             </div>

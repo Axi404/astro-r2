@@ -12,13 +12,19 @@ import type { Route } from './+types/root';
 import './app.css';
 
 export const links: Route.LinksFunction = () => [
+  { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+  { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
+  {
+    rel: 'stylesheet',
+    href: 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@400;500;600;700;800&family=Noto+Serif+SC:wght@500;600;700;900&display=swap',
+  },
   { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
 ];
 
 export const meta: Route.MetaFunction = () => [
   { title: 'Lightframe Archive' },
   { name: 'description', content: 'A React Router image host built for fast uploads and careful archive work.' },
-  { name: 'theme-color', content: '#f4f0e7' },
+  { name: 'theme-color', content: '#ede2d3' },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {

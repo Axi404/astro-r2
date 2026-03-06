@@ -363,7 +363,7 @@ export default function ImageGallery() {
             <h3 className="font-display text-3xl text-[var(--ink)]">加载失败</h3>
             <p className="mt-3 text-sm leading-7 text-[var(--danger)]">{error}</p>
             {errorDetails ? (
-              <div className="mt-4 rounded-[22px] border border-[rgba(167,96,82,0.16)] bg-white/60 px-4 py-3 text-sm leading-7 text-[var(--ink-soft)]">
+              <div className="mt-4 rounded-[14px] border border-[rgba(167,96,82,0.16)] bg-white/60 px-4 py-3 text-sm leading-7 text-[var(--ink-soft)]">
                 {errorDetails}
               </div>
             ) : null}
@@ -489,7 +489,7 @@ export default function ImageGallery() {
             {images.map((image, index) => (
               <article
                 key={image.key}
-                className={`group overflow-hidden rounded-[28px] border bg-[rgba(255,252,247,0.78)] transition-all duration-300 ${
+                className={`group overflow-hidden rounded-[18px] border bg-[rgba(255,252,247,0.78)] transition-all duration-300 ${
                   selectedImages.has(image.key)
                     ? 'border-[var(--accent)] shadow-[0_12px_32px_rgba(86,109,90,0.1)]'
                     : 'border-[var(--line)] hover:border-[var(--line-strong)]'
@@ -508,7 +508,7 @@ export default function ImageGallery() {
                       loading="lazy"
                     />
                   </button>
-                  <div className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[rgba(255,252,247,0.9)] backdrop-blur">
+                  <div className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-[12px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] backdrop-blur">
                     <input
                       type="checkbox"
                       checked={selectedImages.has(image.key)}
@@ -622,7 +622,7 @@ export default function ImageGallery() {
                           <img
                             src={image.url}
                             alt={getDisplayName(image.key)}
-                            className="h-16 w-16 rounded-[18px] object-cover"
+                            className="h-16 w-16 rounded-[12px] object-cover"
                             loading="lazy"
                           />
                         </button>
@@ -733,14 +733,14 @@ export default function ImageGallery() {
           onClick={() => setActiveImage(null)}
         >
           <div
-            className="grid max-h-full w-full max-w-6xl gap-0 overflow-hidden rounded-[34px] border border-[var(--line)] bg-[var(--paper-strong)] shadow-[0_40px_110px_rgba(24,30,24,0.18)] lg:grid-cols-[1.25fr_0.75fr]"
+            className="grid max-h-full w-full max-w-6xl gap-0 overflow-hidden rounded-[20px] border border-[var(--line)] bg-[var(--paper-strong)] shadow-[0_40px_110px_rgba(24,30,24,0.18)] lg:grid-cols-[1.25fr_0.75fr]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex min-h-[320px] items-center justify-center bg-[linear-gradient(180deg,rgba(244,240,232,0.96),rgba(233,228,218,0.9))] p-6">
               <img
                 src={activeImage.url}
                 alt={getDisplayName(activeImage.key)}
-                className="max-h-[72vh] w-auto max-w-full rounded-[24px] object-contain shadow-[0_26px_80px_rgba(24,30,24,0.14)]"
+                className="max-h-[72vh] w-auto max-w-full rounded-[16px] object-contain shadow-[0_26px_80px_rgba(24,30,24,0.14)]"
               />
             </div>
             <aside className="flex flex-col justify-between gap-6 border-t border-[var(--line)] bg-[rgba(248,245,239,0.88)] p-6 text-[var(--ink)] lg:border-l lg:border-t-0">
@@ -764,7 +764,7 @@ export default function ImageGallery() {
               </div>
 
               <div className="grid gap-4">
-                <div className="rounded-[22px] border border-[var(--line)] bg-[rgba(255,255,255,0.54)] p-4">
+                <div className="rounded-[14px] border border-[var(--line)] bg-[rgba(255,255,255,0.54)] p-4">
                   <p className="eyebrow text-[var(--muted)]">Metadata</p>
                   <div className="mt-4 space-y-3 text-sm text-[var(--ink-soft)]">
                     <div className="flex justify-between gap-4">

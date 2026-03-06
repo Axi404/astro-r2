@@ -1,5 +1,7 @@
 import type { Route } from './+types/about';
 
+import PageIntro from '~/components/PageIntro';
+
 const sections = [
   {
     title: '上传',
@@ -22,50 +24,54 @@ const sections = [
 export const meta: Route.MetaFunction = () => [{ title: 'About - Lightframe Archive' }];
 
 const principles = [
-  '少一点界面噪音，多一点操作秩序。',
-  '上传、浏览和删除都保持认证校验。',
-  '界面以扁平、中性、克制为主，不抢内容本身的注意力。',
+  {
+    title: '少一点噪音',
+    body: '上传、浏览和删除只保留必要动作，让图像内容自己站到前面。',
+    detail: 'quiet first',
+  },
+  {
+    title: '多一点秩序',
+    body: '命名、预览、翻页和复制都沿着一条清晰流程组织，而不是散落在各处。',
+    detail: 'clear sequence',
+  },
+  {
+    title: '认证不退场',
+    body: '页面可见时，接口也继续校验，不让私有内容在边角处漏出。',
+    detail: 'auth all the way',
+  },
 ];
 
 export default function AboutRoute() {
   return (
     <div className="space-y-8">
-      <section className="panel panel-light overflow-hidden px-6 py-7 sm:px-8 sm:py-9">
-        <div className="grid gap-8 lg:grid-cols-[1.06fr_0.94fr] lg:items-end">
-          <div className="max-w-2xl">
-            <p className="eyebrow text-[var(--muted)]">About</p>
-            <h1 className="mt-4 font-display text-5xl leading-[0.96] text-[var(--ink)] sm:text-6xl">
-              一个更安静的
-              <br />
-              私有图床工作区。
-            </h1>
-            <p className="mt-5 max-w-xl text-sm leading-8 text-[var(--ink-soft)] sm:text-base">
-              Lightframe Archive 把上传、浏览、删除和登录这些动作压缩到一套克制的界面里，让日常维护保持轻而有序。
-            </p>
-          </div>
-
-          <div className="metric-card p-6">
-            <p className="eyebrow text-[var(--muted)]">Principles</p>
-            <div className="mt-4 space-y-3 text-sm leading-7 text-[var(--ink-soft)]">
-              {principles.map((principle) => (
-                <div key={principle} className="flex gap-3">
-                  <span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]" />
-                  <span>{principle}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+      <PageIntro
+        eyebrow="About"
+        title={
+          <>
+            一套留白充足的
+            <br />
+            私有图床工作区。
+          </>
+        }
+        description="Lightframe Archive 把上传、浏览、删除和登录这些动作压缩在一套克制界面里。页面不像工具箱，更像一张整理台。"
+        asideLabel="Principles"
+        asideLead="这一版的布局以纸面感、秩序感和较低干扰为中心。"
+        notes={principles}
+      />
 
       <section className="grid gap-4 lg:grid-cols-2">
         {sections.map((section) => (
           <article key={section.title} className="panel panel-light p-6 sm:p-7">
-            <p className="eyebrow text-[var(--muted)]">{section.title}</p>
-            <ul className="mt-5 space-y-3 text-sm leading-7 text-[var(--ink-soft)]">
+            <div className="flex items-end justify-between gap-4">
+              <p className="eyebrow text-[var(--muted)]">{section.title}</p>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+                scope
+              </span>
+            </div>
+            <ul className="mt-5 space-y-4 text-sm leading-7 text-[var(--ink-soft)]">
               {section.items.map((item) => (
                 <li key={item} className="flex gap-3">
-                  <span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]" />
+                  <span className="mt-3 h-px w-5 shrink-0 bg-[var(--accent)]" />
                   <span>{item}</span>
                 </li>
               ))}

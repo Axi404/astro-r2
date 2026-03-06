@@ -539,7 +539,9 @@ export default function ImageUploader() {
     const badgeText = delta >= 0 ? `-${percent}%` : `+${percent}%`;
 
     return (
-      <div className={`absolute bottom-3 right-3 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${badgeClass}`}>
+      <div
+        className={`absolute bottom-3 right-3 rounded-[12px] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${badgeClass}`}
+      >
         {badgeText}
       </div>
     );
@@ -588,7 +590,7 @@ export default function ImageUploader() {
             </div>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[0.98fr_1.02fr]">
+          <div className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
             <div className="grid gap-4">
               <div className="metric-card p-5 sm:p-6">
                 <p className="eyebrow text-[var(--muted)]">命名方式</p>
@@ -660,7 +662,7 @@ export default function ImageUploader() {
             </div>
 
             <div
-              className={`flex min-h-[340px] flex-col justify-center rounded-[30px] border border-dashed p-8 text-center transition-colors sm:p-10 ${
+              className={`flex min-h-[340px] flex-col justify-center rounded-[18px] border border-dashed p-8 text-center transition-colors sm:p-10 ${
                 isDragging
                   ? 'border-[rgba(86,109,90,0.42)] bg-[rgba(255,255,255,0.9)]'
                   : 'border-[var(--line-strong)] bg-[linear-gradient(180deg,rgba(248,245,238,0.84),rgba(241,237,228,0.92))]'
@@ -670,7 +672,7 @@ export default function ImageUploader() {
               onDragOver={handleDragOver}
               onDrop={handleDrop}
             >
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-[var(--line)] bg-[rgba(255,255,255,0.86)] text-[var(--ink)]">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[16px] border border-[var(--line)] bg-[rgba(255,255,255,0.86)] text-[var(--ink)]">
                 <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
@@ -754,7 +756,7 @@ export default function ImageUploader() {
               return (
                 <article
                   key={previewImage.id}
-                  className="overflow-hidden rounded-[30px] border border-[var(--line)] bg-[rgba(255,252,247,0.74)]"
+                  className="overflow-hidden rounded-[18px] border border-[var(--line)] bg-[rgba(255,252,247,0.74)]"
                 >
                   <div className="border-b border-[var(--line)] px-5 py-4">
                     <div className="flex items-start justify-between gap-4">
@@ -769,7 +771,7 @@ export default function ImageUploader() {
                       </div>
                       <button
                         onClick={() => void removePreviewImage(previewImage.id)}
-                        className="rounded-full border border-[var(--line)] bg-white/80 p-2 text-[var(--muted)] transition-colors hover:border-[rgba(167,96,82,0.22)] hover:text-[var(--danger)]"
+                        className="rounded-[12px] border border-[var(--line)] bg-white/80 p-2 text-[var(--muted)] transition-colors hover:border-[rgba(167,96,82,0.22)] hover:text-[var(--danger)]"
                       >
                         <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                           <path
@@ -786,13 +788,13 @@ export default function ImageUploader() {
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
                         <h5 className="eyebrow text-[var(--muted)]">Original</h5>
-                        <div className="relative overflow-hidden rounded-[24px] border border-[var(--line)] bg-[rgba(244,240,232,0.84)] p-2">
+                        <div className="relative overflow-hidden rounded-[16px] border border-[var(--line)] bg-[rgba(244,240,232,0.84)] p-2">
                           <img
                             src={previewImage.preview}
                             alt="Original"
-                            className="h-44 w-full rounded-[18px] object-cover"
+                            className="h-44 w-full rounded-[12px] object-cover"
                           />
-                          <div className="absolute bottom-4 left-4 rounded-full bg-[rgba(31,38,34,0.82)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-[var(--paper-strong)]">
+                          <div className="absolute bottom-4 left-4 rounded-[12px] bg-[rgba(31,38,34,0.82)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-[var(--paper-strong)]">
                             {formatFileSize(previewImage.originalSize)}
                           </div>
                         </div>
@@ -802,9 +804,9 @@ export default function ImageUploader() {
                         <h5 className="eyebrow text-[var(--muted)]">
                           {enableWebpCompression ? 'Processed / WebP' : 'Original Format'}
                         </h5>
-                        <div className="relative overflow-hidden rounded-[24px] border border-[var(--line)] bg-[rgba(244,240,232,0.84)] p-2">
+                        <div className="relative overflow-hidden rounded-[16px] border border-[var(--line)] bg-[rgba(244,240,232,0.84)] p-2">
                           {previewImage.isProcessing ? (
-                            <div className="flex h-44 w-full items-center justify-center rounded-[18px] border border-dashed border-[var(--line)] bg-white/70">
+                            <div className="flex h-44 w-full items-center justify-center rounded-[12px] border border-dashed border-[var(--line)] bg-white/70">
                               <div className="text-center">
                                 <div className="mx-auto mb-3 h-7 w-7 animate-spin rounded-full border-b-2 border-[var(--accent)]"></div>
                                 <div className="eyebrow text-[var(--muted)]">压缩中</div>
@@ -815,9 +817,9 @@ export default function ImageUploader() {
                               <img
                                 src={showOriginalFallback ? previewImage.preview : previewImage.compressedPreview}
                                 alt="Processed"
-                                className="h-44 w-full rounded-[18px] object-cover"
+                                className="h-44 w-full rounded-[12px] object-cover"
                               />
-                              <div className="absolute bottom-4 left-4 rounded-full bg-[rgba(31,38,34,0.82)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-[var(--paper-strong)]">
+                              <div className="absolute bottom-4 left-4 rounded-[12px] bg-[rgba(31,38,34,0.82)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-[var(--paper-strong)]">
                                 {formatFileSize(
                                   showOriginalFallback
                                     ? previewImage.originalSize
@@ -832,7 +834,7 @@ export default function ImageUploader() {
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-[24px] border border-[var(--line)] bg-[rgba(255,255,255,0.58)] p-4">
+                      <div className="rounded-[16px] border border-[var(--line)] bg-[rgba(255,255,255,0.58)] p-4">
                         <p className="eyebrow text-[var(--muted)]">Upload</p>
                         <p className="mt-3 text-sm font-semibold text-[var(--ink)]">
                           {useHashName ? '随机文件名' : '原名 + 时间戳'}
@@ -843,7 +845,7 @@ export default function ImageUploader() {
                             : '按原始格式上传'}
                         </p>
                       </div>
-                      <div className="rounded-[24px] border border-[var(--line)] bg-[rgba(255,255,255,0.58)] p-4">
+                      <div className="rounded-[16px] border border-[var(--line)] bg-[rgba(255,255,255,0.58)] p-4">
                         <p className="eyebrow text-[var(--muted)]">Delta</p>
                         {previewImage.compressedSize && !previewImage.isProcessing ? (
                           <>
@@ -892,12 +894,12 @@ export default function ImageUploader() {
             {uploadedImages.map((image, index) => (
               <div
                 key={`${image.key}-${index}`}
-                className="flex flex-col gap-4 rounded-[28px] border border-[var(--line)] bg-[rgba(255,252,247,0.72)] p-4 sm:flex-row sm:items-center"
+                className="flex flex-col gap-4 rounded-[18px] border border-[var(--line)] bg-[rgba(255,252,247,0.72)] p-4 sm:flex-row sm:items-center"
               >
                 <img
                   src={image.url}
                   alt="Uploaded"
-                  className="h-24 w-full rounded-[22px] object-cover sm:w-24"
+                  className="h-24 w-full rounded-[14px] object-cover sm:w-24"
                 />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-display text-2xl text-[var(--ink)]">

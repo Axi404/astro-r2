@@ -63,7 +63,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         <h1 className="mt-4 font-display text-5xl text-[var(--ink)]">{message}</h1>
         <p className="mt-4 text-base leading-8 text-[var(--ink-soft)]">{details}</p>
         {stack ? (
-          <pre className="mt-6 overflow-x-auto rounded-[24px] border border-[var(--line)] bg-[rgba(255,255,255,0.62)] p-4 text-sm text-[var(--ink-soft)]">
+          <pre className="mt-6 overflow-x-auto rounded-[16px] border border-[var(--line)] bg-[rgba(255,255,255,0.62)] p-4 text-sm text-[var(--ink-soft)]">
             <code>{stack}</code>
           </pre>
         ) : null}

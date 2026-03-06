@@ -904,22 +904,23 @@ export default function ImageGallery() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => void copyToClipboard(activeImage.url)}
-                    className="button-secondary"
+                    className={getActionButtonClass('secondary')}
                   >
-                    复制链接
+                    复制
                   </button>
                   <button
                     onClick={() => void copyToClipboard(`![Image](${activeImage.url})`)}
-                    className="button-ghost"
+                    className={getActionButtonClass('ghost')}
+                    title="复制 Markdown"
                   >
-                    复制 Markdown
+                    MD
                   </button>
                   <button
                     onClick={() => void deleteImage(activeImage.key)}
-                    className="button-danger"
+                    className={getActionButtonClass('danger')}
                   >
                     删除
                   </button>

@@ -4,22 +4,43 @@
 
 ## 环境变量
 
-当前版本部署到 Vercel，不再使用 Astro，也不再使用单独的 `SESSION_SECRET`。
-会话签名直接由 `ADMIN_PASSWORD` 派生。
+当前版本部署到 Vercel，不再使用 Astro，也不再使用单独的 `SESSION_SECRET`。  
+会话签名直接由 `ADMIN_PASSWORD` 派生（见 `app/lib/session.server.ts`）。
 
-在本地环境或 Vercel Project Settings 中配置以下变量：
+### 变量清单（含获取方式）
+
+| 变量名 | 必填 | 用途 | 如何获得 |
+| --- | --- | --- | --- |
+| `R2_ACCESS_KEY_ID` | 是 | 调用 R2 S3 API 的 Access Key ID | Cloudflare Dashboard → `R2` → `Manage R2 API Tokens` → 创建 `Object Read & Write` 的 API Token 后获取 |
+| `R2_SECRET_ACCESS_KEY` | 是 | 调用 R2 S3 API 的 Secret Key | 同上，创建 token 时一起给出；只会完整显示一次，建议立刻保存到密码管理器 |
+| `R2_BUCKET_NAME` | 是 | 上传与读取的目标 bucket 名称 | Cloudflare Dashboard → `R2` → `Overview` 创建 bucket，直接使用该 bucket 名 |
+| `R2_ENDPOINT` | 是 | R2 S3 endpoint（不是公共访问域名） | Cloudflare Dashboard → `R2` → `S3 API` 页面复制 endpoint，格式通常是 `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
+| `R2_PUBLIC_URL` | 是 | 图片外链访问前缀，用于拼接最终 URL | 给 bucket 配置公开域名（自定义域名或 `r2.dev` 域名），填完整 `https://...`，建议不带尾部 `/` |
+| `ADMIN_PASSWORD` | 是 | 后台登录密码；同时用于派生 cookie 会话签名 | 自己生成强密码（建议 20+ 位随机串），例如 `openssl rand -base64 24` |
+| `MAX_FILE_SIZE` | 否 | 单文件上传大小上限（字节） | 按需求填写，默认 `10485760`（10MB）；例如 `20971520`（20MB） |
+
+### 本地 `.env` 示例
+
+在项目根目录创建 `.env`（或 `.env.local`）：
 
 ```bash
-R2_ACCESS_KEY_ID=Cloudflare R2 S3 Access Key ID
-R2_SECRET_ACCESS_KEY=Cloudflare R2 S3 Secret Access Key
+R2_ACCESS_KEY_ID=your_r2_access_key_id
+R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
 R2_BUCKET_NAME=你的 R2 bucket 名称
 R2_ENDPOINT=https://<accountid>.r2.cloudflarestorage.com
 R2_PUBLIC_URL=https://你的图片访问域名
-ADMIN_PASSWORD=后台登录密码
+ADMIN_PASSWORD=替换成强密码
 MAX_FILE_SIZE=10485760 # 可选，默认 10MB
 ```
 
-其中 `R2_ENDPOINT` 使用 Cloudflare R2 的 S3 API endpoint，`R2_PUBLIC_URL` 使用你给 bucket 配置的公开访问域名。
+### 逐项获取步骤（Cloudflare + Vercel）
+
+1. 在 Cloudflare `R2` 中创建 bucket，记下 bucket 名（`R2_BUCKET_NAME`）。
+2. 打开 `R2` 的 API Token 管理页面，创建仅针对该 bucket 的读写 token，保存 `R2_ACCESS_KEY_ID` 和 `R2_SECRET_ACCESS_KEY`。
+3. 在 `R2` 的 `S3 API` 页面复制 endpoint 作为 `R2_ENDPOINT`。
+4. 为 bucket 配置公开访问域名（推荐自定义域名），把该域名填到 `R2_PUBLIC_URL`。
+5. 本地生成管理员密码并保存为 `ADMIN_PASSWORD`。
+6. 在 Vercel 项目 `Settings` → `Environment Variables` 中配置上述全部变量（`MAX_FILE_SIZE` 可选）。
 
 ## 本地开发
 
@@ -38,12 +59,10 @@ bun run dev
 
 ## 部署步骤
 
-1. 在 Cloudflare R2 中创建存储桶，并记录 bucket 名称。
-2. 在 Cloudflare R2 的 S3 API 页面创建 Access Key，拿到 `R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY` 和 `R2_ENDPOINT`。
-3. 给 bucket 配置公开访问域名，作为 `R2_PUBLIC_URL`。
-4. 在 Vercel 项目的 Environment Variables 中配置全部变量。
-5. 把仓库重新部署到 Vercel；Vercel 会基于 `bun.lock` 和 React Router preset 自动构建。
-6. 部署完成后访问 `/login`，使用 `ADMIN_PASSWORD` 登录。
+1. 先按上面的“逐项获取步骤”准备好环境变量。
+2. 在 Vercel 项目中设置环境变量后触发一次重新部署。
+3. Vercel 会基于 `bun.lock` 和 React Router preset 自动构建。
+4. 部署完成后访问 `/login`，使用 `ADMIN_PASSWORD` 登录。
 
 ## Vercel 配置说明
 

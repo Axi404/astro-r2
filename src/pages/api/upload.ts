@@ -1,71 +1,88 @@
 import type { APIRoute } from 'astro';
-import { R2Service, getR2Config } from '../../lib/r2';
 import { requireAuth } from '../../lib/auth';
+import { getR2Service } from '../../lib/r2';
 
 export const POST: APIRoute = async (context) => {
   const authError = requireAuth(context);
   if (authError) return authError;
+
   const { request } = context;
+
   try {
-    const config = getR2Config();
-    const r2Service = new R2Service(config);
+    const r2Service = getR2Service();
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    
-    if (!file) {
+
+    if (!(file instanceof File)) {
       return new Response(JSON.stringify({ error: 'No file provided' }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store',
+        },
       });
     }
 
-    // 检查文件大小
-    const maxSize = parseInt(import.meta.env.MAX_FILE_SIZE || process.env.MAX_FILE_SIZE || '10485760'); // 10MB 默认
+    const maxSize = Number.parseInt(
+      import.meta.env.MAX_FILE_SIZE || process.env.MAX_FILE_SIZE || '10485760',
+      10
+    );
     if (file.size > maxSize) {
-      return new Response(JSON.stringify({ 
-        error: `File size exceeds limit of ${maxSize / 1024 / 1024}MB` 
+      return new Response(JSON.stringify({
+        error: `File size exceeds limit of ${maxSize / 1024 / 1024}MB`,
       }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store',
+        },
       });
     }
 
-    // 检查文件类型
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
     if (!allowedTypes.includes(file.type)) {
-      return new Response(JSON.stringify({ 
-        error: 'Invalid file type. Only images are allowed.' 
+      return new Response(JSON.stringify({
+        error: 'Invalid file type. Only images are allowed.',
       }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store',
+        },
       });
     }
 
+    const rawQuality = Number.parseInt((formData.get('quality') as string) || '80', 10);
     const options = {
       useHashName: (formData.get('useHashName') as string) === 'true',
       compressToWebp: (formData.get('enableWebpCompression') as string) === 'true',
-      quality: parseInt(formData.get('quality') as string || '80'),
+      quality: Math.min(Math.max(rawQuality, 10), 100),
     };
 
     const imageInfo = await r2Service.uploadImage(file, file.name, options);
 
     return new Response(JSON.stringify({
       success: true,
-      data: imageInfo
+      data: imageInfo,
     }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+      },
     });
-
   } catch (error) {
     console.error('Upload error:', error);
-    return new Response(JSON.stringify({ 
-      error: 'Upload failed', 
-      details: error instanceof Error ? error.message : 'Unknown error' 
+    return new Response(JSON.stringify({
+      error: 'Upload failed',
+      details: error instanceof Error ? error.message : 'Unknown error',
     }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+      },
     });
   }
 };

@@ -1,18 +1,45 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import ImageGallery from '../components/ImageGallery';
+import { isAuthenticated } from '../lib/auth';
+
+const notes = [
+  '分页模式适合快速操作，避免一次性拉太多对象。',
+  '查看全部会顺着 cursor 连续抓取，适合完整浏览现有存量内容。',
+  '支持网格和表格切换，复制链接、Markdown 与批量删除都保留。',
+];
+
+if (!isAuthenticated(Astro)) {
+  return Astro.redirect(`/login?next=${encodeURIComponent(`${Astro.url.pathname}${Astro.url.search}`)}`);
+}
 ---
 
-<Layout title="R2 图床 - 图片管理">
-  <div class="space-y-8">
-    <div class="text-center">
-      <h1 class="text-3xl font-bold text-gray-900 mb-4">
-        图片管理
-      </h1>
-      <p class="text-lg text-gray-600">
-        查看、管理和删除您上传的图片
-      </p>
-    </div>
+<Layout title="R2 图床 - 图片管理" authenticated currentPath="/gallery">
+  <div class="space-y-10">
+    <section class="grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
+      <div class="rounded-[32px] border border-[var(--line)] bg-[rgba(255,250,242,0.82)] px-6 py-8 shadow-[var(--shadow-soft)] backdrop-blur sm:px-8">
+        <p class="text-[11px] uppercase tracking-[0.42em] text-[var(--muted)]">Archive Index</p>
+        <h1 class="mt-4 font-display text-5xl leading-[0.96] text-[var(--ink)] sm:text-6xl">
+          查看全部现有内容，也保留分页节奏
+        </h1>
+        <p class="mt-5 max-w-2xl text-base leading-7 text-[var(--ink-soft)] sm:text-lg">
+          这一页偏向内容档案室：支持完整浏览对象池、局部操作和批量处理。
+          如果你只想快速翻一页，用分页；如果你想盘点全部内容，直接切到查看全部。
+        </p>
+      </div>
+
+      <div class="rounded-[32px] border border-[var(--line)] bg-[rgba(30,22,14,0.92)] p-6 text-[var(--paper)] shadow-[0_30px_70px_rgba(19,13,8,0.28)]">
+        <p class="text-[11px] uppercase tracking-[0.34em] text-[rgba(244,236,223,0.62)]">Reading Notes</p>
+        <ul class="mt-5 space-y-4 text-sm leading-7 text-[rgba(244,236,223,0.8)]">
+          {notes.map((note) => (
+            <li class="flex gap-3">
+              <span class="mt-2 h-2 w-2 shrink-0 rounded-full bg-[var(--accent-soft)]"></span>
+              <span>{note}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
 
     <ImageGallery client:load />
   </div>

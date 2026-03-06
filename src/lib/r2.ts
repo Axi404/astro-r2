@@ -1,10 +1,14 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  ListObjectsV2Command,
+} from '@aws-sdk/client-s3';
 import crypto from 'crypto';
 import mimeTypes from 'mime-types';
 
 export interface R2Config {
-  accountId: string;
+  accountId?: string;
   accessKeyId: string;
   secretAccessKey: string;
   bucketName: string;
@@ -24,6 +28,20 @@ export interface ImageInfo {
   size: number;
   mimeType: string;
   uploadedAt: Date;
+}
+
+export interface ListImagesResult {
+  images: ImageInfo[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+export interface DeleteImagesResult {
+  deleted: string[];
+  failed: Array<{
+    key: string;
+    error: string;
+  }>;
 }
 
 export class R2Service {
@@ -57,15 +75,21 @@ export class R2Service {
   }
 
   private async processImage(
-    buffer: Buffer, 
-    mimeType: string, 
+    buffer: Buffer,
+    mimeType: string,
     options: UploadOptions
   ): Promise<{ buffer: Buffer; mimeType: string; ext: string }> {
-    if (!options.compressToWebp || !mimeType.startsWith('image/')) {
-      return { 
-        buffer, 
-        mimeType, 
-        ext: mimeTypes.extension(mimeType) || 'bin' 
+    const shouldSkipCompression =
+      !options.compressToWebp ||
+      !mimeType.startsWith('image/') ||
+      mimeType === 'image/svg+xml' ||
+      mimeType === 'image/gif';
+
+    if (shouldSkipCompression) {
+      return {
+        buffer,
+        mimeType,
+        ext: mimeTypes.extension(mimeType) || 'bin',
       };
     }
 
@@ -82,10 +106,10 @@ export class R2Service {
       };
     } catch (error) {
       console.warn('Failed to convert to WebP, using original format:', error);
-      return { 
-        buffer, 
-        mimeType, 
-        ext: mimeTypes.extension(mimeType) || 'bin' 
+      return {
+        buffer,
+        mimeType,
+        ext: mimeTypes.extension(mimeType) || 'bin',
       };
     }
   }
@@ -107,14 +131,12 @@ export class R2Service {
       mimeType = mimeTypes.lookup(originalName) || 'application/octet-stream';
     }
 
-    // 处理图片（可选压缩为 WebP）
     const processed = await this.processImage(buffer, mimeType, options);
-    
-    // 生成文件名
-    const fileName = this.generateFileName(
-      originalName.replace(/\.[^/.]+$/, `.${processed.ext}`),
-      options.useHashName
-    );
+
+    const normalizedOriginalName = originalName.includes('.')
+      ? originalName.replace(/\.[^/.]+$/, `.${processed.ext}`)
+      : `${originalName}.${processed.ext}`;
+    const fileName = this.generateFileName(normalizedOriginalName, options.useHashName);
 
     const key = fileName;
 
@@ -123,7 +145,7 @@ export class R2Service {
       Key: key,
       Body: processed.buffer,
       ContentType: processed.mimeType,
-      CacheControl: 'public, max-age=31536000', // 1年缓存
+      CacheControl: 'public, max-age=31536000',
     });
 
     await this.client.send(command);
@@ -146,20 +168,47 @@ export class R2Service {
     await this.client.send(command);
   }
 
-  async listImages(prefix: string = '', maxKeys: number = 100, offset: number = 0): Promise<ImageInfo[]> {
-    // R2/S3 doesn't directly support offset, so we need to fetch more and slice
-    // For better performance, we could implement marker-based pagination in the future
-    const fetchLimit = maxKeys + offset;
-    
+  async deleteImages(keys: string[]): Promise<DeleteImagesResult> {
+    const uniqueKeys = [...new Set(keys.map((key) => key.trim()).filter(Boolean))];
+    const results = await Promise.allSettled(uniqueKeys.map((key) => this.deleteImage(key)));
+
+    return results.reduce<DeleteImagesResult>(
+      (accumulator, result, index) => {
+        const key = uniqueKeys[index];
+
+        if (result.status === 'fulfilled') {
+          accumulator.deleted.push(key);
+          return accumulator;
+        }
+
+        accumulator.failed.push({
+          key,
+          error: result.reason instanceof Error ? result.reason.message : 'Unknown error',
+        });
+        return accumulator;
+      },
+      {
+        deleted: [],
+        failed: [],
+      }
+    );
+  }
+
+  async listImages(
+    prefix: string = '',
+    maxKeys: number = 60,
+    cursor?: string | null
+  ): Promise<ListImagesResult> {
     const command = new ListObjectsV2Command({
       Bucket: this.config.bucketName,
-      Prefix: prefix,
-      MaxKeys: Math.min(fetchLimit, 1000), // R2 max limit is 1000
+      Prefix: prefix || undefined,
+      MaxKeys: Math.min(Math.max(maxKeys, 1), 1000),
+      ContinuationToken: cursor || undefined,
     });
 
     const response = await this.client.send(command);
-    
-    const allImages = (response.Contents || []).map(object => ({
+
+    const images = (response.Contents || []).map((object) => ({
       key: object.Key!,
       url: `${this.config.publicUrl}/${object.Key}`,
       size: object.Size || 0,
@@ -167,30 +216,43 @@ export class R2Service {
       uploadedAt: object.LastModified || new Date(),
     }));
 
-    // Apply offset and limit
-    return allImages.slice(offset, offset + maxKeys);
-  }
-
-  async getPresignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
-    const command = new PutObjectCommand({
-      Bucket: this.config.bucketName,
-      Key: key,
-    });
-
-    return await getSignedUrl(this.client, command, { expiresIn });
+    return {
+      images,
+      nextCursor: response.NextContinuationToken || null,
+      hasMore: Boolean(response.IsTruncated && response.NextContinuationToken),
+    };
   }
 }
 
-// 获取环境变量配置
+let r2ServiceSingleton: R2Service | null = null;
+
+function getRequiredValue(key: string): string {
+  const value = import.meta.env[key] || process.env[key];
+
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+
+  return value;
+}
+
 export function getR2Config(): R2Config {
-  const getValue = (key: string) => import.meta.env[key] || process.env[key];
+  const publicUrl = getRequiredValue('R2_PUBLIC_URL').replace(/\/+$/, '');
 
   return {
-    accountId: getValue('R2_ACCOUNT_ID') || '',
-    accessKeyId: getValue('R2_ACCESS_KEY_ID') || '',
-    secretAccessKey: getValue('R2_SECRET_ACCESS_KEY') || '',
-    bucketName: getValue('R2_BUCKET_NAME') || '',
-    endpoint: getValue('R2_ENDPOINT') || '',
-    publicUrl: getValue('R2_PUBLIC_URL') || '',
+    accountId: import.meta.env.R2_ACCOUNT_ID || process.env.R2_ACCOUNT_ID,
+    accessKeyId: getRequiredValue('R2_ACCESS_KEY_ID'),
+    secretAccessKey: getRequiredValue('R2_SECRET_ACCESS_KEY'),
+    bucketName: getRequiredValue('R2_BUCKET_NAME'),
+    endpoint: getRequiredValue('R2_ENDPOINT'),
+    publicUrl,
   };
+}
+
+export function getR2Service(): R2Service {
+  if (!r2ServiceSingleton) {
+    r2ServiceSingleton = new R2Service(getR2Config());
+  }
+
+  return r2ServiceSingleton;
 }

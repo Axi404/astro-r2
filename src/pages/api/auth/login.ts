@@ -1,61 +1,61 @@
 import type { APIRoute } from 'astro';
-import crypto from 'crypto';
+import {
+  getAdminPassword,
+  sanitizeNextPath,
+  setSessionCookie,
+} from '../../../lib/auth';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
-    const { password } = await request.json();
-    
-    // 从环境变量获取管理员密码
-    const adminPassword = import.meta.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
-    
-    if (!adminPassword) {
-      return new Response(JSON.stringify({ 
-        error: 'Server configuration error: ADMIN_PASSWORD not set' 
-      }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
+    const body = await request.json();
+    const password = typeof body.password === 'string' ? body.password : '';
+    const nextPath = sanitizeNextPath(typeof body.next === 'string' ? body.next : null);
+
+    if (!password.trim()) {
+      return new Response(JSON.stringify({ error: 'Password is required' }), {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store',
+        },
       });
     }
-    
+
+    const adminPassword = getAdminPassword();
     if (password !== adminPassword) {
-      return new Response(JSON.stringify({ 
-        error: 'Invalid password' 
+      return new Response(JSON.stringify({
+        error: 'Invalid password',
       }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store',
+        },
       });
     }
-    
-    // 设置认证cookie（24小时有效）
-    const token = generateAuthToken();
-    cookies.set('auth-token', token, {
-      httpOnly: true,
-      secure: import.meta.env.PROD,
-      sameSite: 'strict',
-      maxAge: 24 * 60 * 60, // 24小时
-      path: '/'
-    });
-    
-    return new Response(JSON.stringify({ 
+
+    setSessionCookie(cookies);
+
+    return new Response(JSON.stringify({
       success: true,
-      message: 'Login successful' 
+      redirectTo: nextPath,
     }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+      },
     });
-    
   } catch (error) {
     console.error('Login error:', error);
-    return new Response(JSON.stringify({ 
-      error: 'Internal server error' 
+    return new Response(JSON.stringify({
+      error: error instanceof Error ? error.message : 'Internal server error',
     }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+      },
     });
   }
 };
-
-// 生成简单的认证token
-function generateAuthToken(): string {
-  return crypto.randomBytes(32).toString('hex');
-}

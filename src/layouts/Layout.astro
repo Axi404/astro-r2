@@ -1,9 +1,21 @@
 ---
+import LogoutButton from '../components/LogoutButton';
+
 export interface Props {
   title: string;
+  authenticated?: boolean;
+  currentPath?: '/' | '/gallery';
 }
 
-const { title } = Astro.props;
+const { title, authenticated = false, currentPath = '/' } = Astro.props;
+
+const getNavClass = (path: '/' | '/gallery') =>
+  [
+    'rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] transition-all duration-300',
+    currentPath === path
+      ? 'bg-[var(--ink)] text-[var(--paper)] shadow-[0_16px_34px_rgba(21,17,12,0.18)]'
+      : 'text-[var(--muted)] hover:bg-white/70 hover:text-[var(--ink)]',
+  ].join(' ');
 ---
 
 <!DOCTYPE html>
@@ -15,45 +27,148 @@ const { title } = Astro.props;
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
   </head>
-  <body class="bg-gray-50 min-h-screen">
-    <header class="bg-white shadow-sm border-b">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center py-4">
-          <div class="flex items-center">
-            <h1 class="text-2xl font-bold text-gray-900">R2 图床</h1>
-          </div>
-          <nav class="flex space-x-4">
-            <a href="/" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
-              上传图片
-            </a>
-            <a href="/gallery" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
-              图片管理
-            </a>
-          </nav>
-        </div>
-      </div>
-    </header>
-    
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <slot />
-    </main>
+  <body class="min-h-screen bg-[var(--paper)] text-[var(--ink)]">
+    <div class="site-shell">
+      <header class="sticky top-0 z-40 px-4 pt-4 sm:px-6 lg:px-8">
+        <div class="mx-auto max-w-[1240px] rounded-[28px] border border-[var(--line)] bg-[rgba(248,240,224,0.76)] px-5 py-4 shadow-[0_24px_70px_rgba(41,31,17,0.08)] backdrop-blur">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex items-start gap-4">
+              <div class="flex h-12 w-12 items-center justify-center rounded-2xl border border-[rgba(98,76,43,0.18)] bg-[var(--ink)] text-[var(--paper)] shadow-[0_14px_30px_rgba(29,21,13,0.2)]">
+                <span class="text-lg font-semibold tracking-[0.28em]">R2</span>
+              </div>
+              <div>
+                <p class="text-[11px] uppercase tracking-[0.42em] text-[var(--muted)]">
+                  Editorial Control Room
+                </p>
+                <h1 class="font-display text-2xl tracking-[0.04em] text-[var(--ink)] sm:text-3xl">
+                  Archive Atelier
+                </h1>
+              </div>
+            </div>
 
-    <footer class="bg-white border-t mt-12">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <p class="text-center text-gray-500 text-sm">
-          基于 Astro 和 Cloudflare R2 构建的图床服务
-        </p>
-      </div>
-    </footer>
+            {authenticated ? (
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
+                <nav class="flex flex-wrap gap-2 rounded-full border border-[var(--line)] bg-white/70 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+                  <a href="/" class={getNavClass('/')}>
+                    上传工作台
+                  </a>
+                  <a href="/gallery" class={getNavClass('/gallery')}>
+                    内容档案
+                  </a>
+                </nav>
+                <LogoutButton client:load />
+              </div>
+            ) : (
+              <div class="rounded-full border border-[var(--line)] bg-white/70 px-4 py-2 text-xs uppercase tracking-[0.3em] text-[var(--muted)]">
+                Secure Session
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <main class="px-4 pb-14 pt-8 sm:px-6 lg:px-8">
+        <div class="mx-auto max-w-[1240px]">
+          <slot />
+        </div>
+      </main>
+
+      <footer class="px-4 pb-8 sm:px-6 lg:px-8">
+        <div class="mx-auto flex max-w-[1240px] flex-col gap-4 rounded-[28px] border border-[var(--line)] bg-[rgba(255,250,243,0.74)] px-6 py-5 shadow-[0_24px_60px_rgba(54,40,23,0.08)] backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p class="font-display text-xl tracking-[0.08em] text-[var(--ink)]">
+              Built for archive-grade image handling
+            </p>
+            <p class="text-sm text-[var(--muted)]">
+              Astro + Vercel runtime + Cloudflare R2 object storage
+            </p>
+          </div>
+          <div class="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">
+            Paste. Curate. Publish.
+          </div>
+        </div>
+      </footer>
+    </div>
   </body>
 </html>
 
 <style is:global>
-  html {
-    font-family: system-ui, sans-serif;
+  :root {
+    --paper: #f4ecdf;
+    --paper-strong: #fbf6ee;
+    --surface: rgba(255, 251, 245, 0.86);
+    --surface-strong: #fffaf2;
+    --ink: #221b12;
+    --ink-soft: #3d3123;
+    --muted: #75624d;
+    --muted-soft: #9a856c;
+    --accent: #b2622d;
+    --accent-soft: #e0bb86;
+    --line: rgba(111, 86, 53, 0.18);
+    --line-strong: rgba(62, 47, 27, 0.24);
+    --danger: #8a2f2f;
+    --success: #27645a;
+    --shadow-soft: 0 22px 60px rgba(35, 26, 16, 0.09);
   }
-  
+
+  html {
+    font-family: 'Avenir Next', 'Segoe UI', 'Helvetica Neue', sans-serif;
+    background: var(--paper);
+  }
+
+  body {
+    position: relative;
+    color: var(--ink);
+    background:
+      radial-gradient(circle at top left, rgba(226, 193, 147, 0.55), transparent 34%),
+      radial-gradient(circle at 90% 12%, rgba(180, 111, 59, 0.16), transparent 28%),
+      linear-gradient(180deg, #f8f1e6 0%, #f4ecdf 42%, #f0e7d8 100%);
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.34;
+    background-image:
+      linear-gradient(rgba(108, 83, 52, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(108, 83, 52, 0.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: radial-gradient(circle at center, black 48%, transparent 100%);
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.12;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.75), transparent 18%),
+      radial-gradient(circle at 80% 0%, rgba(178, 98, 45, 0.16), transparent 23%),
+      radial-gradient(circle at 60% 72%, rgba(29, 22, 13, 0.08), transparent 20%);
+  }
+
   * {
     box-sizing: border-box;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-display {
+    font-family: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', 'URW Palladio L', serif;
+  }
+
+  ::selection {
+    background: rgba(178, 98, 45, 0.24);
+    color: var(--ink);
+  }
+
+  .site-shell {
+    position: relative;
+    min-height: 100vh;
   }
 </style>

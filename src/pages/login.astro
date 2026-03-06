@@ -1,0 +1,17 @@
+---
+import Layout from '../layouts/Layout.astro';
+import LoginForm from '../components/LoginForm';
+import { isAuthenticated, sanitizeNextPath } from '../lib/auth';
+
+const nextPath = sanitizeNextPath(Astro.url.searchParams.get('next'));
+
+if (isAuthenticated(Astro)) {
+  return Astro.redirect(nextPath);
+}
+---
+
+<Layout title="登录 - R2 图床">
+  <div class="py-6 sm:py-12">
+    <LoginForm client:load nextPath={nextPath} />
+  </div>
+</Layout>

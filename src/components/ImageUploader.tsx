@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ToastManager } from './Toast';
 import { useToast } from '../hooks/useToast';
 
@@ -18,12 +18,59 @@ interface UploadResponse {
 }
 
 interface PreviewImage {
+  id: string;
   file: File;
   preview: string;
   originalSize: number;
   compressedSize?: number;
   compressedPreview?: string;
   isProcessing: boolean;
+}
+
+const PREVIEW_CONCURRENCY = 2;
+const UPLOAD_CONCURRENCY = 3;
+
+function canCompress(file: File): boolean {
+  return (
+    file.type.startsWith('image/') &&
+    file.type !== 'image/svg+xml' &&
+    file.type !== 'image/gif'
+  );
+}
+
+function revokePreviewUrls(image: PreviewImage): void {
+  URL.revokeObjectURL(image.preview);
+  if (image.compressedPreview) {
+    URL.revokeObjectURL(image.compressedPreview);
+  }
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let currentIndex = 0;
+
+  const worker = async () => {
+    while (true) {
+      const index = currentIndex;
+      currentIndex += 1;
+
+      if (index >= items.length) {
+        return;
+      }
+
+      results[index] = await mapper(items[index], index);
+    }
+  };
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker())
+  );
+
+  return results;
 }
 
 export default function ImageUploader() {
@@ -35,103 +82,230 @@ export default function ImageUploader() {
   const [useHashName, setUseHashName] = useState(false);
   const [enableWebpCompression, setEnableWebpCompression] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toasts, removeToast, showSuccess, showError } = useToast();
+  const previewImagesRef = useRef<PreviewImage[]>([]);
+  const compressionRunIdRef = useRef(0);
+  const { toasts, removeToast, showSuccess, showError, showInfo } = useToast();
 
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  }, []);
+  useEffect(() => {
+    previewImagesRef.current = previewImages;
+  }, [previewImages]);
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  }, []);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
-
-  // 创建本地压缩预览
-  const createCompressedPreview = async (file: File, quality: number): Promise<{ blob: Blob; url: string }> => {
+  const createCompressedPreview = async (
+    file: File,
+    nextQuality: number
+  ): Promise<{ blob: Blob; url: string }> => {
     return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-      
-      img.onload = () => {
-        // 设置画布尺寸
-        canvas.width = img.width;
-        canvas.height = img.height;
-        
-        // 绘制图片
-        ctx?.drawImage(img, 0, 0);
-        
-        // 转换为 WebP 格式
+      const context = canvas.getContext('2d');
+      const image = new Image();
+      const sourceUrl = URL.createObjectURL(file);
+
+      image.onload = () => {
+        canvas.width = image.width;
+        canvas.height = image.height;
+        context?.drawImage(image, 0, 0);
+        URL.revokeObjectURL(sourceUrl);
+
         canvas.toBlob(
           (blob) => {
-            if (blob) {
-              const url = URL.createObjectURL(blob);
-              resolve({ blob, url });
-            } else {
+            if (!blob) {
               reject(new Error('Failed to create compressed preview'));
+              return;
             }
+
+            resolve({
+              blob,
+              url: URL.createObjectURL(blob),
+            });
           },
           'image/webp',
-          quality / 100
+          nextQuality / 100
         );
       };
-      
-      img.onerror = () => reject(new Error('Failed to load image'));
-      img.src = URL.createObjectURL(file);
+
+      image.onerror = () => {
+        URL.revokeObjectURL(sourceUrl);
+        reject(new Error('Failed to load image'));
+      };
+
+      image.src = sourceUrl;
     });
   };
 
-  // 处理预览图片
-  const processPreviewImage = async (file: File) => {
-    const originalPreview = URL.createObjectURL(file);
-    
-    const previewImage: PreviewImage = {
-      file,
-      preview: originalPreview,
-      originalSize: file.size,
-      isProcessing: true,
-    };
+  const redirectToLogin = () => {
+    window.location.assign(`/login?next=${encodeURIComponent('/')}`);
+  };
 
-    setPreviewImages(prev => [...prev, previewImage]);
+  const syncCompressionState = useCallback(
+    async (
+      images: PreviewImage[],
+      nextQuality: number,
+      compressionEnabled: boolean
+    ) => {
+      const runId = compressionRunIdRef.current + 1;
+      compressionRunIdRef.current = runId;
 
-    try {
-      // 创建压缩预览
-      if (enableWebpCompression && file.type.startsWith('image/') && file.type !== 'image/svg+xml') {
-        const compressed = await createCompressedPreview(file, quality);
-        
-        setPreviewImages(prev => prev.map(img => 
-          img.file === file 
-            ? { 
-                ...img, 
-                compressedSize: compressed.blob.size,
-                compressedPreview: compressed.url,
-                isProcessing: false 
-              }
-            : img
-        ));
-      } else {
-        // 对于 SVG 等不压缩的格式
-        setPreviewImages(prev => prev.map(img => 
-          img.file === file 
-            ? { ...img, isProcessing: false }
-            : img
-        ));
+      if (!compressionEnabled) {
+        setPreviewImages((prev) =>
+          prev.map((image) => {
+            if (image.compressedPreview) {
+              URL.revokeObjectURL(image.compressedPreview);
+            }
+
+            return {
+              ...image,
+              compressedPreview: undefined,
+              compressedSize: undefined,
+              isProcessing: false,
+            };
+          })
+        );
+        return;
       }
-    } catch (error) {
-      console.error('Failed to create compressed preview:', error);
-      setPreviewImages(prev => prev.map(img => 
-        img.file === file 
-          ? { ...img, isProcessing: false }
-          : img
-      ));
+
+      const compressibleIds = new Set(
+        images.filter((image) => canCompress(image.file)).map((image) => image.id)
+      );
+
+      setPreviewImages((prev) =>
+        prev.map((image) => {
+          if (!compressibleIds.has(image.id)) {
+            if (image.compressedPreview) {
+              URL.revokeObjectURL(image.compressedPreview);
+            }
+
+            return {
+              ...image,
+              compressedPreview: undefined,
+              compressedSize: undefined,
+              isProcessing: false,
+            };
+          }
+
+          return {
+            ...image,
+            isProcessing: true,
+          };
+        })
+      );
+
+      await mapWithConcurrency(
+        images.filter((image) => compressibleIds.has(image.id)),
+        PREVIEW_CONCURRENCY,
+        async (image) => {
+          try {
+            const compressed = await createCompressedPreview(image.file, nextQuality);
+            if (compressionRunIdRef.current !== runId) {
+              URL.revokeObjectURL(compressed.url);
+              return;
+            }
+
+            setPreviewImages((prev) =>
+              prev.map((item) => {
+                if (item.id !== image.id) {
+                  return item;
+                }
+
+                if (item.compressedPreview && item.compressedPreview !== compressed.url) {
+                  URL.revokeObjectURL(item.compressedPreview);
+                }
+
+                return {
+                  ...item,
+                  compressedSize: compressed.blob.size,
+                  compressedPreview: compressed.url,
+                  isProcessing: false,
+                };
+              })
+            );
+          } catch (error) {
+            console.error('Failed to create compressed preview:', error);
+            if (compressionRunIdRef.current !== runId) {
+              return;
+            }
+
+            setPreviewImages((prev) =>
+              prev.map((item) =>
+                item.id === image.id
+                  ? {
+                      ...item,
+                      isProcessing: false,
+                    }
+                  : item
+              )
+            );
+          }
+        }
+      );
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (previewImages.length === 0) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void syncCompressionState(previewImagesRef.current, quality, enableWebpCompression);
+    }, 200);
+
+    return () => window.clearTimeout(timer);
+  }, [enableWebpCompression, quality, syncCompressionState]);
+
+  useEffect(() => {
+    return () => {
+      compressionRunIdRef.current += 1;
+      previewImagesRef.current.forEach(revokePreviewUrls);
+    };
+  }, []);
+
+  const replacePreviews = (images: PreviewImage[]) => {
+    compressionRunIdRef.current += 1;
+    setPreviewImages((prev) => {
+      prev.forEach(revokePreviewUrls);
+      return images;
+    });
+  };
+
+  const handleDragEnter = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+  }, []);
+
+  const handleFiles = async (files: FileList | File[]) => {
+    const imageFiles = Array.from(files).filter((file) => file.type.startsWith('image/'));
+
+    if (imageFiles.length === 0) {
+      showError('请选择图片文件');
+      return;
+    }
+
+    const nextPreviewImages = imageFiles.map<PreviewImage>((file, index) => ({
+      id: `${file.name}-${file.lastModified}-${file.size}-${index}-${crypto.randomUUID()}`,
+      file,
+      preview: URL.createObjectURL(file),
+      originalSize: file.size,
+      isProcessing: enableWebpCompression && canCompress(file),
+    }));
+
+    replacePreviews(nextPreviewImages);
+    await syncCompressionState(nextPreviewImages, quality, enableWebpCompression);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -147,194 +321,173 @@ export default function ImageUploader() {
       body: formData,
     });
 
-    return await response.json();
-  };
-
-  const handleFiles = async (files: FileList | File[]) => {
-    const fileArray = Array.from(files);
-    const imageFiles = fileArray.filter(file => file.type.startsWith('image/'));
-
-    if (imageFiles.length === 0) {
-      alert('请选择图片文件');
-      return;
+    if (response.status === 401) {
+      redirectToLogin();
+      throw new Error('登录已过期，请重新登录');
     }
 
-    // 清空之前的预览
-    setPreviewImages([]);
-
-    // 创建预览
-    for (const file of imageFiles) {
-      await processPreviewImage(file);
+    const result = (await response.json().catch(() => ({}))) as UploadResponse;
+    if (!response.ok) {
+      throw new Error(result.error || result.details || '上传失败');
     }
+
+    return result;
   };
 
   const uploadPreviewImages = async () => {
-    setIsUploading(true);
-
-    for (const previewImage of previewImages) {
-      try {
-        const result = await uploadFile(previewImage.file);
-        if (result.success && result.data) {
-          setUploadedImages(prev => [result.data!, ...prev]);
-        } else {
-          console.error('上传失败:', result.error);
-          let errorMessage = result.error || '未知错误';
-          if (result.details) {
-            if (result.details.includes('Missing or invalid environment variables')) {
-              errorMessage = '环境变量配置错误，请检查 .env 文件';
-            } else if (result.details.includes('SignatureDoesNotMatch')) {
-              errorMessage = 'R2 认证失败，请检查访问密钥';
-            }
-          }
-          alert(`上传 ${previewImage.file.name} 失败: ${errorMessage}`);
-        }
-      } catch (error: any) {
-        console.error('上传错误:', error);
-        let errorMessage = '网络错误';
-        if (error.message?.includes('Missing or invalid environment variables')) {
-          errorMessage = '环境变量配置错误，请检查 .env 文件';
-        }
-        alert(`上传 ${previewImage.file.name} 出错: ${errorMessage}`);
-      }
+    if (previewImages.length === 0) {
+      showInfo('没有可上传的图片');
+      return;
     }
 
-    // 清空预览
-    setPreviewImages([]);
-    setIsUploading(false);
+    setIsUploading(true);
+
+    try {
+      const snapshots = [...previewImagesRef.current];
+      const results = await mapWithConcurrency(
+        snapshots,
+        UPLOAD_CONCURRENCY,
+        async (image) => {
+          try {
+            const result = await uploadFile(image.file);
+            return {
+              id: image.id,
+              fileName: image.file.name,
+              result,
+            };
+          } catch (error) {
+            return {
+              id: image.id,
+              fileName: image.file.name,
+              error: error instanceof Error ? error.message : '上传失败',
+            };
+          }
+        }
+      );
+
+      const successfulIds = new Set<string>();
+      const nextUploadedImages: UploadedImage[] = [];
+      const failedFiles: string[] = [];
+
+      results.forEach((item) => {
+        if (item.result?.success && item.result.data) {
+          successfulIds.add(item.id);
+          nextUploadedImages.push(item.result.data);
+          return;
+        }
+
+        failedFiles.push(`${item.fileName}: ${item.error || item.result?.error || '上传失败'}`);
+      });
+
+      if (nextUploadedImages.length > 0) {
+        setUploadedImages((prev) => [...nextUploadedImages.reverse(), ...prev].slice(0, 12));
+        showSuccess(
+          nextUploadedImages.length === 1
+            ? '图片上传成功'
+            : `成功上传 ${nextUploadedImages.length} 张图片`
+        );
+      }
+
+      if (failedFiles.length > 0) {
+        showError(
+          failedFiles.length === 1
+            ? failedFiles[0]
+            : `${failedFiles.length} 张图片上传失败`
+        );
+      }
+
+      if (successfulIds.size > 0) {
+        setPreviewImages((prev) => {
+          const remaining = prev.filter((image) => !successfulIds.has(image.id));
+          prev
+            .filter((image) => successfulIds.has(image.id))
+            .forEach(revokePreviewUrls);
+          return remaining;
+        });
+      }
+    } finally {
+      setIsUploading(false);
+    }
   };
 
-  const removePreviewImage = (file: File) => {
-    setPreviewImages(prev => {
-      const updated = prev.filter(img => img.file !== file);
-      // 清理 URL 对象
-      const toRemove = prev.find(img => img.file === file);
-      if (toRemove) {
-        URL.revokeObjectURL(toRemove.preview);
-        if (toRemove.compressedPreview) {
-          URL.revokeObjectURL(toRemove.compressedPreview);
-        }
-      }
-      return updated;
-    });
+  const removePreviewImage = async (id: string) => {
+    const currentImages = previewImagesRef.current;
+    const imageToRemove = currentImages.find((image) => image.id === id);
+    if (!imageToRemove) {
+      return;
+    }
+
+    revokePreviewUrls(imageToRemove);
+    const remainingImages = currentImages.filter((image) => image.id !== id);
+    compressionRunIdRef.current += 1;
+    setPreviewImages(remainingImages);
+
+    if (remainingImages.length > 0) {
+      await syncCompressionState(remainingImages, quality, enableWebpCompression);
+    }
   };
 
   const clearPreviews = () => {
-    previewImages.forEach(img => {
-      URL.revokeObjectURL(img.preview);
-      if (img.compressedPreview) {
-        URL.revokeObjectURL(img.compressedPreview);
-      }
+    compressionRunIdRef.current += 1;
+    setPreviewImages((prev) => {
+      prev.forEach(revokePreviewUrls);
+      return [];
     });
-    setPreviewImages([]);
   };
 
-  // 当质量改变时重新生成压缩预览
-  const updateCompressionQuality = async (newQuality: number) => {
-    setQuality(newQuality);
-    
-    for (const previewImage of previewImages) {
-      if (enableWebpCompression && previewImage.file.type.startsWith('image/') && previewImage.file.type !== 'image/svg+xml') {
-        setPreviewImages(prev => prev.map(img => 
-          img.file === previewImage.file 
-            ? { ...img, isProcessing: true }
-            : img
-        ));
+  const handleDrop = useCallback(
+    async (event: React.DragEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setIsDragging(false);
 
-        try {
-          const compressed = await createCompressedPreview(previewImage.file, newQuality);
-          
-          setPreviewImages(prev => prev.map(img => 
-            img.file === previewImage.file 
-              ? { 
-                  ...img, 
-                  compressedSize: compressed.blob.size,
-                  compressedPreview: compressed.url,
-                  isProcessing: false 
-                }
-              : img
-          ));
+      await handleFiles(event.dataTransfer.files);
+    },
+    [enableWebpCompression, quality]
+  );
 
-          // 清理旧的预览 URL
-          if (previewImage.compressedPreview) {
-            URL.revokeObjectURL(previewImage.compressedPreview);
-          }
-        } catch (error) {
-          console.error('Failed to update compressed preview:', error);
-          setPreviewImages(prev => prev.map(img => 
-            img.file === previewImage.file 
-              ? { ...img, isProcessing: false }
-              : img
-          ));
-        }
-      }
+  const handleFileInput = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) {
+      return;
     }
-  };
 
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    const files = e.dataTransfer.files;
     await handleFiles(files);
-  }, [quality, enableWebpCompression]);
-
-  const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      await handleFiles(files);
-    }
   };
 
-  const handlePaste = useCallback(async (e: ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
+  const handlePaste = useCallback(
+    async (event: ClipboardEvent) => {
+      const items = event.clipboardData?.items;
+      if (!items) {
+        return;
+      }
 
-    const files: File[] = [];
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      if (item.type.startsWith('image/')) {
+      const files: File[] = [];
+      for (let index = 0; index < items.length; index += 1) {
+        const item = items[index];
+        if (!item.type.startsWith('image/')) {
+          continue;
+        }
+
         const file = item.getAsFile();
         if (file) {
           files.push(file);
         }
       }
-    }
 
-    if (files.length > 0) {
-      await handleFiles(files);
-    }
-  }, [quality, enableWebpCompression]);
+      if (files.length > 0) {
+        await handleFiles(files);
+      }
+    },
+    [enableWebpCompression, quality]
+  );
 
-  React.useEffect(() => {
+  useEffect(() => {
     document.addEventListener('paste', handlePaste);
     return () => {
       document.removeEventListener('paste', handlePaste);
     };
   }, [handlePaste]);
-
-  // 清理内存泄漏
-  React.useEffect(() => {
-    return () => {
-      previewImages.forEach(img => {
-        URL.revokeObjectURL(img.preview);
-        if (img.compressedPreview) {
-          URL.revokeObjectURL(img.compressedPreview);
-        }
-      });
-    };
-  }, []);
-
-  React.useEffect(() => {
-    return () => {
-      previewImages.forEach(img => {
-        URL.revokeObjectURL(img.preview);
-        if (img.compressedPreview) {
-          URL.revokeObjectURL(img.compressedPreview);
-        }
-      });
-    };
-  }, [previewImages]);
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -351,286 +504,407 @@ export default function ImageUploader() {
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   };
+
+  const renderCompressionBadge = (previewImage: PreviewImage) => {
+    if (!previewImage.compressedSize) {
+      return null;
+    }
+
+    const delta = previewImage.originalSize - previewImage.compressedSize;
+    const percent = Math.round(Math.abs(delta / previewImage.originalSize) * 100);
+    const badgeClass = delta >= 0
+      ? 'bg-green-600/80 text-white'
+      : 'bg-amber-600/90 text-white';
+    const badgeText = delta >= 0 ? `-${percent}%` : `+${percent}%`;
+
+    return (
+      <div className={`absolute bottom-1 right-1 rounded px-2 py-1 text-xs ${badgeClass}`}>
+        {badgeText}
+      </div>
+    );
+  };
+
+  const processingCount = previewImages.filter((image) => image.isProcessing).length;
+  const compressedCount = previewImages.filter((image) => image.compressedSize).length;
 
   return (
     <div className="space-y-6">
-      {/* 上传区域 */}
-      <div className="bg-white rounded-lg shadow-sm border-2 border-dashed border-gray-300 p-8">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">上传图片</h2>
-          <p className="text-gray-600 mb-6">
-            拖拽图片到此处，或点击选择文件，或直接粘贴剪贴板中的图片（Ctrl+V）
-          </p>
-
-          {/* 上传选项 */}
-          <div className="mb-6 space-y-4">
-            {/* 文件名选项 */}
-            <div>
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={useHashName}
-                  onChange={(e) => setUseHashName(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  使用随机文件名 (Hash)
-                </span>
-              </label>
-              <p className="text-xs text-gray-500 mt-1">
-                {useHashName ? '文件将使用随机哈希名称' : '保持原始文件名（时间戳前缀）'}
-              </p>
-            </div>
-
-            {/* WebP 压缩选项 */}
-            <div>
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={enableWebpCompression}
-                  onChange={(e) => setEnableWebpCompression(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  启用 WebP 压缩
-                </span>
-              </label>
-              <p className="text-xs text-gray-500 mt-1">
-                {enableWebpCompression ? '图片将压缩为 WebP 格式以减小文件大小' : '保持原始格式'}
-              </p>
-            </div>
-
-            {/* 质量设置 */}
-            {enableWebpCompression && (
+      <section className="grid gap-5 xl:grid-cols-[1.22fr_0.78fr]">
+        <div className="rounded-[32px] border border-[var(--line)] bg-[rgba(255,250,242,0.84)] p-6 shadow-[var(--shadow-soft)] backdrop-blur sm:p-7">
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  WebP 压缩质量: {quality}%
-                </label>
-                <input
-                  type="range"
-                  min="10"
-                  max="100"
-                  value={quality}
-                  onChange={(e) => updateCompressionQuality(parseInt(e.target.value))}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>较小文件</span>
-                  <span>较高质量</span>
+                <p className="text-[11px] uppercase tracking-[0.38em] text-[var(--muted)]">Upload Bench</p>
+                <h2 className="mt-3 font-display text-4xl text-[var(--ink)] sm:text-5xl">
+                  上传、预览、再决定是否发布
+                </h2>
+                <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--ink-soft)] sm:text-base">
+                  把这里当成一个图像工作台：先拖进来，实时对比压缩效果，再统一上传并复制链接。
+                </p>
+              </div>
+
+              <a
+                href="/gallery"
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.26em] text-[var(--ink)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-white"
+              >
+                查看全部档案
+                <span aria-hidden="true">↗</span>
+              </a>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+              <div className="space-y-4">
+                <div className="rounded-[24px] border border-[var(--line)] bg-white/72 p-4">
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">Naming</p>
+                  <label className="mt-4 flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={useHashName}
+                      onChange={(event) => setUseHashName(event.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-[var(--line-strong)] bg-[var(--paper)] text-[var(--accent)] focus:ring-[rgba(178,98,45,0.28)]"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-[var(--ink)]">使用随机文件名</span>
+                      <span className="mt-1 block text-sm leading-6 text-[var(--muted)]">
+                        {useHashName ? '当前会生成随机哈希名称。' : '当前保持原始文件名，并追加时间戳前缀。'}
+                      </span>
+                    </span>
+                  </label>
+                </div>
+
+                <div className="rounded-[24px] border border-[var(--line)] bg-white/72 p-4">
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">Compression</p>
+                  <label className="mt-4 flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={enableWebpCompression}
+                      onChange={(event) => setEnableWebpCompression(event.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-[var(--line-strong)] bg-[var(--paper)] text-[var(--accent)] focus:ring-[rgba(178,98,45,0.28)]"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-[var(--ink)]">启用 WebP 压缩</span>
+                      <span className="mt-1 block text-sm leading-6 text-[var(--muted)]">
+                        {enableWebpCompression ? '会在本地生成压缩对照预览。' : '会保留原始格式直接上传。'}
+                      </span>
+                    </span>
+                  </label>
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* 拖拽区域 */}
-          <div
-            className={`border-2 border-dashed rounded-lg p-12 transition-colors ${
-              isDragging 
-                ? 'border-primary-500 bg-primary-50' 
-                : 'border-gray-300 hover:border-gray-400'
-            }`}
-            onDragEnter={handleDragEnter}
-            onDragLeave={handleDragLeave}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-          >
-            <div className="flex flex-col items-center justify-center space-y-4">
-              <svg 
-                className="w-12 h-12 text-gray-400" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" 
-                />
-              </svg>
-              <div className="text-lg font-medium text-gray-900">
-                {isDragging ? '释放文件开始上传' : '拖拽图片到此处'}
+              <div className="rounded-[26px] border border-[var(--line)] bg-[linear-gradient(160deg,rgba(255,255,255,0.86),rgba(236,221,197,0.56))] p-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">Quality Dial</p>
+                    <p className="mt-3 font-display text-4xl text-[var(--ink)]">{quality}%</p>
+                  </div>
+                  <div className="rounded-full bg-[rgba(178,98,45,0.12)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--accent)]">
+                    {enableWebpCompression ? 'Preview active' : 'Bypass'}
+                  </div>
+                </div>
+
+                {enableWebpCompression ? (
+                  <div className="mt-6">
+                    <input
+                      type="range"
+                      min="10"
+                      max="100"
+                      value={quality}
+                      onChange={(event) => setQuality(Number.parseInt(event.target.value, 10))}
+                      className="h-2 w-full cursor-pointer appearance-none rounded-full bg-[rgba(34,27,18,0.12)]"
+                    />
+                    <div className="mt-2 flex justify-between text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+                      <span>Smaller</span>
+                      <span>Sharper</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-6 rounded-[20px] border border-[var(--line)] bg-white/70 px-4 py-3 text-sm leading-6 text-[var(--muted)]">
+                    当前关闭压缩预览，滑杆不会参与上传。
+                  </div>
+                )}
               </div>
-              <div className="text-sm text-gray-500">
-                支持 JPG, PNG, GIF, WebP, SVG 格式
+            </div>
+
+            <div
+              className={`relative overflow-hidden rounded-[32px] border p-8 transition-all duration-300 sm:p-12 ${
+                isDragging
+                  ? 'border-[rgba(178,98,45,0.44)] bg-[rgba(255,244,230,0.9)] shadow-[0_28px_70px_rgba(178,98,45,0.12)]'
+                  : 'border-[var(--line)] bg-[linear-gradient(160deg,rgba(255,253,248,0.92),rgba(244,231,210,0.54))] hover:border-[rgba(178,98,45,0.28)]'
+              }`}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+            >
+              <div className="pointer-events-none absolute -right-10 top-0 h-40 w-40 rounded-full border border-[rgba(178,98,45,0.12)] bg-[radial-gradient(circle,_rgba(178,98,45,0.14),_transparent_70%)]" />
+              <div className="pointer-events-none absolute bottom-[-34px] left-[-16px] h-28 w-28 rounded-full bg-[radial-gradient(circle,_rgba(34,27,18,0.08),_transparent_68%)]" />
+
+              <div className="relative flex flex-col items-center justify-center space-y-4 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-[22px] border border-[var(--line)] bg-[rgba(31,22,12,0.95)] text-[var(--paper)] shadow-[0_18px_38px_rgba(19,13,8,0.22)]">
+                  <svg
+                    className="h-8 w-8"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.8}
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                    />
+                  </svg>
+                </div>
+                <div className="font-display text-4xl text-[var(--ink)]">
+                  {isDragging ? '释放后开始准备预览' : '拖拽图片到这里'}
+                </div>
+                <p className="max-w-xl text-sm leading-7 text-[var(--ink-soft)] sm:text-base">
+                  支持 JPG、PNG、GIF、WebP、SVG。你也可以直接点击选择文件，或者复制图片后按 Ctrl+V 粘贴。
+                </p>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="rounded-full bg-[var(--ink)] px-6 py-3 text-sm font-semibold uppercase tracking-[0.24em] text-[var(--paper)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[var(--accent)]"
+                  disabled={isUploading}
+                >
+                  {isUploading ? '上传中...' : '选择文件'}
+                </button>
               </div>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                disabled={isUploading}
-              >
-                {isUploading ? '上传中...' : '选择文件'}
-              </button>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleFileInput}
+              className="hidden"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-5">
+          <div className="rounded-[32px] border border-[var(--line)] bg-[rgba(31,22,12,0.93)] p-6 text-[var(--paper)] shadow-[0_30px_80px_rgba(20,14,8,0.28)]">
+            <p className="text-[11px] uppercase tracking-[0.38em] text-[rgba(244,236,223,0.58)]">Session Snapshot</p>
+            <div className="mt-5 grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
+              <div className="rounded-[22px] border border-[rgba(244,236,223,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
+                <p className="text-[11px] uppercase tracking-[0.26em] text-[rgba(244,236,223,0.54)]">Queue</p>
+                <p className="mt-3 font-display text-4xl">{previewImages.length}</p>
+                <p className="mt-2 text-sm text-[rgba(244,236,223,0.72)]">当前待处理图片数</p>
+              </div>
+              <div className="rounded-[22px] border border-[rgba(244,236,223,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
+                <p className="text-[11px] uppercase tracking-[0.26em] text-[rgba(244,236,223,0.54)]">Compress</p>
+                <p className="mt-3 font-display text-4xl">{compressedCount}</p>
+                <p className="mt-2 text-sm text-[rgba(244,236,223,0.72)]">已有压缩对照的图片</p>
+              </div>
+              <div className="rounded-[22px] border border-[rgba(244,236,223,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
+                <p className="text-[11px] uppercase tracking-[0.26em] text-[rgba(244,236,223,0.54)]">Active</p>
+                <p className="mt-3 font-display text-4xl">{processingCount}</p>
+                <p className="mt-2 text-sm text-[rgba(244,236,223,0.72)]">正在计算中的预览</p>
+              </div>
             </div>
           </div>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleFileInput}
-            className="hidden"
-          />
+          <div className="rounded-[32px] border border-[var(--line)] bg-[rgba(255,251,245,0.82)] p-6 shadow-[var(--shadow-soft)]">
+            <p className="text-[11px] uppercase tracking-[0.38em] text-[var(--muted)]">Workflow</p>
+            <ul className="mt-5 space-y-4 text-sm leading-7 text-[var(--ink-soft)]">
+              <li className="flex gap-3">
+                <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[var(--accent)]"></span>
+                <span>拖入或粘贴图片，系统会生成原图与压缩后的对照预览。</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[var(--accent)]"></span>
+                <span>根据体积变化决定是否保留压缩，再统一发起上传。</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[var(--accent)]"></span>
+                <span>上传完成后可复制直链，也可以切去图库查看现有全部内容。</span>
+              </li>
+            </ul>
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* 预览区域 */}
-      {previewImages.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              图片预览 ({previewImages.length} 张)
-            </h3>
-            <div className="flex space-x-2">
+      {previewImages.length > 0 ? (
+        <div className="rounded-[32px] border border-[var(--line)] bg-[rgba(255,250,242,0.84)] p-6 shadow-[var(--shadow-soft)]">
+          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.38em] text-[var(--muted)]">Preview Rail</p>
+              <h3 className="mt-3 font-display text-4xl text-[var(--ink)]">
+                图片预览 ({previewImages.length} 张)
+              </h3>
+              <p className="mt-2 text-sm leading-7 text-[var(--ink-soft)]">
+                原图与处理后的版本并排显示，方便快速决策。
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={clearPreviews}
-                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                className="rounded-full border border-[var(--line)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--ink)] transition-all duration-300 hover:bg-white"
               >
                 清空预览
               </button>
               <button
-                onClick={uploadPreviewImages}
-                disabled={isUploading || previewImages.some(img => img.isProcessing)}
-                className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => void uploadPreviewImages()}
+                disabled={isUploading || previewImages.some((image) => image.isProcessing)}
+                className="rounded-full bg-[var(--ink)] px-5 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--paper)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isUploading ? '上传中...' : '开始上传'}
               </button>
             </div>
           </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {previewImages.map((previewImage, index) => (
-              <div key={index} className="border rounded-lg p-4 space-y-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-medium text-gray-900 truncate">
-                      {previewImage.file.name}
-                    </h4>
-                    <p className="text-xs text-gray-500">
-                      {formatFileSize(previewImage.originalSize)} • {previewImage.file.type}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => removePreviewImage(previewImage.file)}
-                    className="text-gray-400 hover:text-red-500 transition-colors"
-                  >
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  {/* 原始图片 */}
-                  <div className="space-y-2">
-                    <h5 className="text-xs font-medium text-gray-700">原始图片</h5>
-                    <div className="relative">
-                      <img 
-                        src={previewImage.preview} 
-                        alt="Original" 
-                        className="w-full h-32 object-cover rounded border"
-                      />
-                      <div className="absolute bottom-1 left-1 px-2 py-1 bg-black bg-opacity-60 text-white text-xs rounded">
-                        {formatFileSize(previewImage.originalSize)}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {previewImages.map((previewImage) => {
+              const showOriginalFallback =
+                !enableWebpCompression || !previewImage.compressedPreview;
+
+              return (
+                <div
+                  key={previewImage.id}
+                  className="space-y-4 rounded-[28px] border border-[var(--line)] bg-[rgba(255,255,255,0.72)] p-5 shadow-[0_18px_42px_rgba(34,27,18,0.08)]"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">Pending item</p>
+                      <h4 className="mt-2 truncate font-display text-3xl text-[var(--ink)]">
+                        {previewImage.file.name}
+                      </h4>
+                      <p className="mt-2 text-sm text-[var(--muted)]">
+                        {formatFileSize(previewImage.originalSize)} • {previewImage.file.type}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => void removePreviewImage(previewImage.id)}
+                      className="rounded-full border border-[var(--line)] bg-white/80 p-2 text-[var(--muted)] transition-colors hover:text-[var(--danger)]"
+                    >
+                      <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                          fillRule="evenodd"
+                          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <h5 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">原始图片</h5>
+                      <div className="relative overflow-hidden rounded-[22px] border border-[var(--line)] bg-[rgba(245,239,229,0.72)] p-2">
+                        <img
+                          src={previewImage.preview}
+                          alt="Original"
+                          className="h-40 w-full rounded-[18px] object-cover"
+                        />
+                        <div className="absolute bottom-4 left-4 rounded-full bg-[rgba(17,13,10,0.74)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-white">
+                          {formatFileSize(previewImage.originalSize)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h5 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+                        {enableWebpCompression ? '压缩后 (WebP)' : '保持原始格式'}
+                      </h5>
+                      <div className="relative overflow-hidden rounded-[22px] border border-[var(--line)] bg-[rgba(245,239,229,0.72)] p-2">
+                        {previewImage.isProcessing ? (
+                          <div className="flex h-40 w-full items-center justify-center rounded-[18px] border border-dashed border-[var(--line)] bg-white/70">
+                            <div className="text-center">
+                              <div className="mx-auto mb-2 h-6 w-6 animate-spin rounded-full border-b-2 border-[var(--accent)]"></div>
+                              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">压缩中...</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <img
+                              src={showOriginalFallback ? previewImage.preview : previewImage.compressedPreview}
+                              alt="Processed"
+                              className="h-40 w-full rounded-[18px] object-cover"
+                            />
+                            <div className="absolute bottom-4 left-4 rounded-full bg-[rgba(17,13,10,0.74)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-white">
+                              {formatFileSize(
+                                showOriginalFallback
+                                  ? previewImage.originalSize
+                                  : previewImage.compressedSize || 0
+                              )}
+                            </div>
+                            {!showOriginalFallback ? renderCompressionBadge(previewImage) : null}
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* 压缩后图片 */}
-                  <div className="space-y-2">
-                    <h5 className="text-xs font-medium text-gray-700">
-                      {enableWebpCompression ? '压缩后 (WebP)' : '不压缩'}
-                    </h5>
-                    <div className="relative">
-                      {previewImage.isProcessing ? (
-                        <div className="w-full h-32 border border-dashed rounded flex items-center justify-center bg-gray-50">
-                          <div className="text-center">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto mb-2"></div>
-                            <div className="text-xs text-gray-500">压缩中...</div>
-                          </div>
-                        </div>
-                      ) : previewImage.compressedPreview ? (
-                        <>
-                          <img 
-                            src={previewImage.compressedPreview} 
-                            alt="Compressed" 
-                            className="w-full h-32 object-cover rounded border"
-                          />
-                          <div className="absolute bottom-1 left-1 px-2 py-1 bg-black bg-opacity-60 text-white text-xs rounded">
-                            {formatFileSize(previewImage.compressedSize || 0)}
-                          </div>
-                          {previewImage.compressedSize && (
-                            <div className="absolute bottom-1 right-1 px-2 py-1 bg-green-600 bg-opacity-80 text-white text-xs rounded">
-                              -{Math.round((1 - previewImage.compressedSize / previewImage.originalSize) * 100)}%
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="w-full h-32 border border-dashed rounded flex items-center justify-center bg-gray-50">
-                          <div className="text-xs text-gray-500">不支持压缩</div>
-                        </div>
-                      )}
+                  {previewImage.compressedSize && !previewImage.isProcessing ? (
+                    <div className="rounded-[22px] border border-[rgba(39,100,90,0.16)] bg-[rgba(245,252,249,0.95)] p-4">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-[var(--success)]">压缩效果:</span>
+                        <span className="font-medium text-[var(--ink)]">
+                          {formatFileSize(previewImage.originalSize)} → {formatFileSize(previewImage.compressedSize)}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-xs uppercase tracking-[0.16em] text-[var(--success)]">
+                        {previewImage.originalSize >= previewImage.compressedSize
+                          ? `节省 ${formatFileSize(previewImage.originalSize - previewImage.compressedSize)}`
+                          : `增加 ${formatFileSize(previewImage.compressedSize - previewImage.originalSize)}`}
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
                 </div>
-
-                {/* 压缩统计 */}
-                {previewImage.compressedSize && !previewImage.isProcessing && (
-                  <div className="bg-green-50 border border-green-200 rounded p-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-green-800">压缩效果:</span>
-                      <span className="font-medium text-green-900">
-                        {formatFileSize(previewImage.originalSize)} → {formatFileSize(previewImage.compressedSize)}
-                      </span>
-                    </div>
-                    <div className="text-xs text-green-700 mt-1">
-                      节省 {formatFileSize(previewImage.originalSize - previewImage.compressedSize)} 
-                      ({Math.round((1 - previewImage.compressedSize / previewImage.originalSize) * 100)}%)
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* 上传结果 */}
-      {uploadedImages.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">最近上传的图片</h3>
-          <div className="space-y-4">
+      {uploadedImages.length > 0 ? (
+        <div className="rounded-[32px] border border-[var(--line)] bg-[rgba(255,250,242,0.84)] p-6 shadow-[var(--shadow-soft)]">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.38em] text-[var(--muted)]">Recent Dispatches</p>
+              <h3 className="mt-3 font-display text-4xl text-[var(--ink)]">最近上传的图片</h3>
+            </div>
+            <a
+              href="/gallery"
+              className="rounded-full border border-[var(--line)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--ink)] transition-all duration-300 hover:bg-white"
+            >
+              去完整档案页
+            </a>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
             {uploadedImages.map((image, index) => (
-              <div key={index} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                <img 
-                  src={image.url} 
-                  alt="Uploaded" 
-                  className="w-16 h-16 object-cover rounded-lg"
+              <div
+                key={`${image.key}-${index}`}
+                className="flex items-center gap-4 rounded-[24px] border border-[var(--line)] bg-white/72 p-4 shadow-[0_18px_38px_rgba(34,27,18,0.07)]"
+              >
+                <img
+                  src={image.url}
+                  alt="Uploaded"
+                  className="h-20 w-20 rounded-[20px] object-cover"
                 />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 truncate">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-display text-2xl text-[var(--ink)]">
                     {image.key.split('/').pop()}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="mt-1 text-sm text-[var(--ink-soft)]">
                     {formatFileSize(image.size)} • {image.mimeType}
                   </div>
-                  <div className="text-xs text-gray-400">
+                  <div className="mt-1 text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
                     {new Date(image.uploadedAt).toLocaleString()}
                   </div>
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex flex-wrap gap-2">
                   <button
-                    onClick={() => copyToClipboard(image.url)}
-                    className="px-3 py-1 text-sm bg-primary-100 text-primary-700 rounded hover:bg-primary-200 transition-colors"
+                    onClick={() => void copyToClipboard(image.url)}
+                    className="rounded-full border border-[var(--line)] bg-white/80 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--ink)] transition-colors hover:bg-white"
                   >
-                    复制链接
+                    Copy
                   </button>
                   <button
-                    onClick={() => copyToClipboard(`![Image](${image.url})`)}
-                    className="px-3 py-1 text-sm bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+                    onClick={() => void copyToClipboard(`![Image](${image.url})`)}
+                    className="rounded-full bg-[var(--ink)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--paper)] transition-colors hover:bg-[var(--accent)]"
                   >
                     Markdown
                   </button>
@@ -639,9 +913,8 @@ export default function ImageUploader() {
             ))}
           </div>
         </div>
-      )}
-      
-      {/* Toast Manager */}
+      ) : null}
+
       <ToastManager toasts={toasts} removeToast={removeToast} />
     </div>
   );

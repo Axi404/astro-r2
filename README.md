@@ -1,104 +1,57 @@
 # Astro R2 图床
 
-基于 Astro 和 Cloudflare R2 构建的简洁、高效的图床服务，支持 Cloudflare Pages 部署。
+基于 Astro、Vercel 和 Cloudflare R2 的图床服务，包含登录保护、批量管理、拖拽上传和可选的 WebP 压缩。
 
-## 支持的文件格式
+## 环境变量
 
-- JPEG / JPG
-- PNG
-- GIF
-- WebP
-- SVG
-
-## 部署指南
-
-### 1. R2 存储桶设置
-
-1. 登录 Cloudflare 控制台
-2. 创建 R2 存储桶
-3. 生成 API Token，确保有 R2 的读写权限
-
-![](https://picr2.axi404.top/1754991977043_image.webp)
-
-![](https://picr2.axi404.top/1754992057042_image.webp)
-
-![](https://picr2.axi404.top/1754992118194_image.webp)
-
-![](https://picr2.axi404.top/1754992181237_image.webp)
-
-![](https://picr2.axi404.top/1754992252450_image.webp)
-
-复制并且备份这个页面中的内容，它们只出现一次。
-
-### 2. Vercel 部署
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository=https://github.com/Axi404/astro-r2)
-
-### 3. 环境变量设置
-
-在 Vercel 的设置中添加以下环境变量：
+在 Vercel 项目中配置以下环境变量：
 
 ```bash
-R2_ACCOUNT_ID=你的Cloudflare账户ID
-R2_ACCESS_KEY_ID=你的R2访问密钥ID
-R2_SECRET_ACCESS_KEY=你的R2秘密访问密钥
-R2_BUCKET_NAME=你的R2存储桶名称
-R2_ENDPOINT=你的终结点
-R2_PUBLIC_URL=https://你的自定义域名.com # 或者你的桶的默认 url
-ADMIN_PASSWORD=网页的登录密码，自定义
+R2_ACCESS_KEY_ID=你的 R2 Access Key ID
+R2_SECRET_ACCESS_KEY=你的 R2 Secret Access Key
+R2_BUCKET_NAME=你的 R2 存储桶名称
+R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+R2_PUBLIC_URL=https://你的图片访问域名
+ADMIN_PASSWORD=后台登录密码
+SESSION_SECRET=用于签名登录 cookie 的随机长字符串
+MAX_FILE_SIZE=10485760 # 可选，默认 10MB
+R2_ACCOUNT_ID=你的 Cloudflare Account ID # 可选，仅为兼容保留
 ```
 
-其中 R2_ACCOUNT_ID 为账户 ID：
+`SESSION_SECRET` 在生产环境必填，建议使用至少 32 字节的随机值。
 
-![](https://picr2.axi404.top/1754992463308_image.webp)
+## 本地开发
 
-之后重新部署，即可。
-
-## 使用方法
-
-### 上传图片
-
-1. **拖拽上传**：直接拖拽图片文件到上传区域
-2. **文件选择**：点击"选择文件"按钮选择图片
-3. **剪贴板粘贴**：复制图片后在页面上按 `Ctrl+V` 粘贴
-
-### 管理图片
-
-- 在"图片管理"页面可以查看所有已上传的图片
-- 支持网格和列表两种视图模式
-- 可以批量选择和删除图片
-- 一键复制图片链接或 Markdown 格式
-
-### 压缩设置
-
-- 可以调整 WebP 压缩质量（10-100%）
-- 默认质量为 80%，平衡文件大小和图片质量
-
-## 项目结构
-
-```
-astro-r2/
-├── src/
-│   ├── components/          # React 组件
-│   │   ├── ImageUploader.tsx
-│   │   └── ImageGallery.tsx
-│   ├── layouts/             # Astro 布局
-│   │   └── Layout.astro
-│   ├── lib/                 # 工具库
-│   │   └── r2.ts           # R2 服务封装
-│   └── pages/              # 页面
-│       ├── api/            # API 路由
-│       │   ├── upload.ts
-│       │   └── images.ts
-│       ├── index.astro     # 首页
-│       └── gallery.astro   # 图片管理页
-├── public/                 # 静态资源
-├── astro.config.mjs       # Astro 配置
-├── tailwind.config.mjs    # Tailwind 配置
-├── wrangler.toml          # Cloudflare 配置
-└── package.json
+```bash
+bun install
+bun run dev
 ```
 
-## 许可证
+常用命令：
 
-MIT License
+- `bun run build`：构建生产版本
+- `bun run preview`：预览构建产物
+- `bun run test`：运行内置测试
+- `bun run check`：运行 Astro 类型检查
+- `bun run verify`：串联测试、类型检查和构建
+
+## 部署步骤
+
+1. 在 Cloudflare R2 中创建存储桶，并生成具备读写权限的 Access Key。
+2. 为存储桶配置公开访问域名，作为 `R2_PUBLIC_URL`。
+3. 在 Vercel 导入本仓库，并填入上面的环境变量。
+4. 部署完成后访问 `/login`，使用 `ADMIN_PASSWORD` 登录。
+
+## 功能概览
+
+- 上传页支持拖拽、文件选择和粘贴图片
+- 支持随机文件名和 WebP 压缩预览
+- 图库页支持网格/列表切换、分页、批量删除
+- 未登录访问上传页或图库页会自动跳转到登录页
+
+## 手动验收建议
+
+1. 未登录访问 `/` 和 `/gallery`，确认都会跳到 `/login`
+2. 登录后上传多张图片，确认可复制链接和 Markdown
+3. 翻页浏览图库，确认上一页/下一页正常
+4. 批量删除图片，确认部分失败时能看到错误提示

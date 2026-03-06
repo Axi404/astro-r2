@@ -1,34 +1,102 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import ImageUploader from '../components/ImageUploader';
-import AuthWrapper from '../components/AuthWrapper';
+import { isAuthenticated } from '../lib/auth';
+
+const features = [
+  {
+    label: 'Clipboard-first',
+    title: '贴图像贴纸一样快',
+    description: '复制图片后直接粘贴，页面会即时生成预览和压缩对照。',
+  },
+  {
+    label: 'Archive-safe',
+    title: '对象管理更像档案库',
+    description: '支持随机文件名、最近上传回看，以及进入图库完整浏览存量内容。',
+  },
+  {
+    label: 'WebP Studio',
+    title: '压缩结果可先看后传',
+    description: '拖动质量滑杆时会重算预览，先判断体积变化再上传。',
+  },
+];
+
+if (!isAuthenticated(Astro)) {
+  return Astro.redirect(`/login?next=${encodeURIComponent(`${Astro.url.pathname}${Astro.url.search}`)}`);
+}
 ---
 
-<Layout title="R2 图床 - 上传图片">
-  <AuthWrapper client:load>
-    <div class="space-y-8 p-6">
-      <div class="text-center">
-        <h1 class="text-4xl font-bold text-gray-900 mb-4">
-          R2 图床服务
-        </h1>
-        <p class="text-xl text-gray-600 max-w-2xl mx-auto">
-          基于 Cloudflare R2 的高性能图床，支持拖拽上传、剪贴板粘贴、WebP 压缩和 Hash 文件名
+<Layout title="R2 图床 - 上传图片" authenticated currentPath="/">
+  <div class="space-y-10">
+    <section class="grid gap-6 lg:grid-cols-[1.35fr_0.82fr]">
+      <div class="relative overflow-hidden rounded-[32px] border border-[var(--line)] bg-[rgba(255,249,239,0.82)] px-6 py-8 shadow-[var(--shadow-soft)] backdrop-blur sm:px-8 sm:py-10">
+        <div class="pointer-events-none absolute -right-14 top-0 h-44 w-44 rounded-full border border-[rgba(178,98,45,0.14)] bg-[radial-gradient(circle,_rgba(178,98,45,0.16),_transparent_70%)]"></div>
+        <div class="pointer-events-none absolute bottom-[-52px] left-[-40px] h-40 w-40 rounded-full border border-[rgba(34,27,18,0.08)] bg-[radial-gradient(circle,_rgba(34,27,18,0.08),_transparent_72%)]"></div>
+
+        <p class="mb-4 text-[11px] uppercase tracking-[0.42em] text-[var(--muted)]">
+          Upload Atelier
         </p>
+        <h1 class="max-w-3xl font-display text-5xl leading-[0.95] text-[var(--ink)] sm:text-6xl">
+          把图像收进一间更像编辑部的上传工作台
+        </h1>
+        <p class="mt-5 max-w-2xl text-base leading-7 text-[var(--ink-soft)] sm:text-lg">
+          这里不是单纯的文件入口，而是一套适合日常贴图、整理和发布的轻量内容工作台。
+          粘贴、拖拽、压缩预览、复制链接，再切到档案页查看全量内容。
+        </p>
+
+        <div class="mt-8 flex flex-wrap gap-3">
+          <a
+            href="/gallery"
+            class="inline-flex items-center gap-2 rounded-full bg-[var(--ink)] px-5 py-3 text-sm font-semibold uppercase tracking-[0.24em] text-[var(--paper)] transition-transform duration-300 hover:-translate-y-0.5"
+          >
+            打开内容档案
+            <span aria-hidden="true">↗</span>
+          </a>
+          <div class="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/70 px-5 py-3 text-sm text-[var(--muted)]">
+            <span class="h-2.5 w-2.5 rounded-full bg-[var(--success)]"></span>
+            WebP 预览、批量上传、会话保护
+          </div>
+        </div>
       </div>
 
-      <ImageUploader client:load />
-
-      <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h3 class="text-lg font-semibold text-blue-900 mb-2">功能特性</h3>
-        <ul class="text-blue-800 space-y-1">
-          <li>• 支持拖拽文件上传</li>
-          <li>• 支持剪贴板图片粘贴 (Ctrl+V)</li>
-          <li>• 自动压缩为 WebP 格式，大幅减少文件大小</li>
-          <li>• 可选的 Hash 文件名，避免文件名冲突</li>
-          <li>• 基于 Cloudflare R2 的全球 CDN 加速</li>
-          <li>• 支持多种图片格式：JPG, PNG, GIF, WebP, SVG</li>
-        </ul>
+      <div class="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+        <div class="rounded-[28px] border border-[var(--line)] bg-[rgba(31,22,12,0.93)] p-6 text-[var(--paper)] shadow-[0_26px_60px_rgba(19,13,8,0.28)]">
+          <p class="text-[11px] uppercase tracking-[0.34em] text-[rgba(244,236,223,0.62)]">Rhythm</p>
+          <div class="mt-5 font-display text-4xl">Ctrl+V</div>
+          <p class="mt-3 text-sm leading-6 text-[rgba(244,236,223,0.74)]">
+            复制后的图片可以直接落到当前页面，省掉本地中转。
+          </p>
+        </div>
+        <div class="rounded-[28px] border border-[var(--line)] bg-[rgba(255,251,244,0.82)] p-6 shadow-[var(--shadow-soft)]">
+          <p class="text-[11px] uppercase tracking-[0.34em] text-[var(--muted)]">Compression</p>
+          <div class="mt-5 font-display text-4xl text-[var(--accent)]">WebP</div>
+          <p class="mt-3 text-sm leading-6 text-[var(--ink-soft)]">
+            上传前先比较压缩前后体积，判断是保真优先还是体积优先。
+          </p>
+        </div>
+        <div class="rounded-[28px] border border-[var(--line)] bg-[linear-gradient(135deg,rgba(226,194,153,0.36),rgba(255,252,246,0.84))] p-6 shadow-[var(--shadow-soft)]">
+          <p class="text-[11px] uppercase tracking-[0.34em] text-[var(--muted)]">Archive</p>
+          <div class="mt-5 font-display text-4xl text-[var(--ink)]">All Items</div>
+          <p class="mt-3 text-sm leading-6 text-[var(--ink-soft)]">
+            图库支持顺着 cursor 抓取全部对象，直接浏览现有存量内容。
+          </p>
+        </div>
       </div>
+    </section>
+
+    <ImageUploader client:load />
+
+    <section class="grid gap-4 lg:grid-cols-3">
+      {features.map((feature) => (
+        <article class="rounded-[26px] border border-[var(--line)] bg-[rgba(255,251,244,0.8)] p-6 shadow-[var(--shadow-soft)] backdrop-blur">
+          <p class="text-[11px] uppercase tracking-[0.34em] text-[var(--muted)]">{feature.label}</p>
+          <h2 class="mt-4 font-display text-3xl text-[var(--ink)]">{feature.title}</h2>
+          <p class="mt-3 text-sm leading-7 text-[var(--ink-soft)]">{feature.description}</p>
+        </article>
+      ))}
+    </section>
+  </div>
+</Layout>
     </div>
-  </AuthWrapper>
+  </div>
 </Layout>

@@ -13,7 +13,7 @@ afterEach(() => {
 
 describe('auth session tokens', () => {
   it('accepts a valid token', () => {
-    process.env.SESSION_SECRET = 'test-secret';
+    process.env.ADMIN_PASSWORD = 'test-password';
 
     const token = createSessionToken(Date.now() + 60_000);
 
@@ -21,7 +21,7 @@ describe('auth session tokens', () => {
   });
 
   it('rejects an expired token', () => {
-    process.env.SESSION_SECRET = 'test-secret';
+    process.env.ADMIN_PASSWORD = 'test-password';
 
     const token = createSessionToken(Date.now() - 1_000);
 
@@ -29,7 +29,7 @@ describe('auth session tokens', () => {
   });
 
   it('rejects a tampered token', () => {
-    process.env.SESSION_SECRET = 'test-secret';
+    process.env.ADMIN_PASSWORD = 'test-password';
 
     const token = createSessionToken(Date.now() + 60_000);
     const [payload, signature] = token.split('.');
@@ -38,11 +38,21 @@ describe('auth session tokens', () => {
     assert.equal(verifySessionToken(tamperedToken), false);
   });
 
-  it('rejects a token signed with a different secret', () => {
-    process.env.SESSION_SECRET = 'first-secret';
+  it('rejects a token signed with a different password fallback', () => {
+    process.env.ADMIN_PASSWORD = 'first-password';
 
     const token = createSessionToken(Date.now() + 60_000);
-    process.env.SESSION_SECRET = 'second-secret';
+    process.env.ADMIN_PASSWORD = 'second-password';
+
+    assert.equal(verifySessionToken(token), false);
+  });
+
+  it('prefers SESSION_SECRET when present', () => {
+    process.env.ADMIN_PASSWORD = 'admin-password';
+    process.env.SESSION_SECRET = 'session-secret-a';
+
+    const token = createSessionToken(Date.now() + 60_000);
+    process.env.SESSION_SECRET = 'session-secret-b';
 
     assert.equal(verifySessionToken(token), false);
   });

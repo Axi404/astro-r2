@@ -13,12 +13,12 @@ R2_BUCKET_NAME=你的 R2 存储桶名称
 R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
 R2_PUBLIC_URL=https://你的图片访问域名
 ADMIN_PASSWORD=后台登录密码
-SESSION_SECRET=用于签名登录 cookie 的随机长字符串
 MAX_FILE_SIZE=10485760 # 可选，默认 10MB
 R2_ACCOUNT_ID=你的 Cloudflare Account ID # 可选，仅为兼容保留
+SESSION_SECRET=可选，单独指定登录 cookie 签名密钥
 ```
 
-`SESSION_SECRET` 在生产环境必填，建议使用至少 32 字节的随机值。
+默认会使用 `ADMIN_PASSWORD` 作为登录 cookie 的签名密钥；如果你想把签名密钥和登录密码分开，再额外配置 `SESSION_SECRET`。
 
 ## 本地开发
 

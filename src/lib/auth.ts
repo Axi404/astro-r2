@@ -22,18 +22,14 @@ export function getAdminPassword(): string {
   return adminPassword;
 }
 
-export function getSessionSecret(): string {
+export function getSigningSecret(): string {
   const sessionSecret = getEnvValue('SESSION_SECRET');
 
   if (sessionSecret) {
     return sessionSecret;
   }
 
-  if (import.meta.env.PROD) {
-    throw new Error('SESSION_SECRET is required in production');
-  }
-
-  return `dev-session-secret:${getEnvValue('ADMIN_PASSWORD') || 'astro-r2'}`;
+  return `admin-password:${getAdminPassword()}`;
 }
 
 function encodePayload(payload: SessionPayload): string {
@@ -50,7 +46,7 @@ function decodePayload(payload: string): SessionPayload | null {
 
 function signPayload(payload: string): string {
   return crypto
-    .createHmac('sha256', getSessionSecret())
+    .createHmac('sha256', getSigningSecret())
     .update(payload)
     .digest('base64url');
 }

@@ -3,8 +3,11 @@ node_modules/
 
 # Build outputs
 dist/
+build/
 .astro/
+.react-router/
 .vercel/
+*.tsbuildinfo
 
 # Environment variables
 .env

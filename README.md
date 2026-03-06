@@ -1,24 +1,21 @@
-# Astro R2 图床
+# Lightframe Archive
 
-基于 Astro、Vercel 和 Cloudflare R2 的图床服务，包含登录保护、批量管理、拖拽上传和可选的 WebP 压缩。
+基于 React Router、Cloudflare Workers 和 Cloudflare R2 的图床后台，包含登录保护、批量管理、拖拽上传和浏览器侧 WebP 压缩预览。
 
 ## 环境变量
 
-在 Vercel 项目中配置以下环境变量：
+当前版本不再使用 Astro/Vercel，也不再使用单独的 `SESSION_SECRET`。
+会话签名直接由 `ADMIN_PASSWORD` 派生。
+
+在 Cloudflare Workers / Wrangler 中配置以下变量或 secret：
 
 ```bash
-R2_ACCESS_KEY_ID=你的 R2 Access Key ID
-R2_SECRET_ACCESS_KEY=你的 R2 Secret Access Key
-R2_BUCKET_NAME=你的 R2 存储桶名称
-R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
 R2_PUBLIC_URL=https://你的图片访问域名
 ADMIN_PASSWORD=后台登录密码
 MAX_FILE_SIZE=10485760 # 可选，默认 10MB
-R2_ACCOUNT_ID=你的 Cloudflare Account ID # 可选，仅为兼容保留
-SESSION_SECRET=可选，单独指定登录 cookie 签名密钥
 ```
 
-默认会使用 `ADMIN_PASSWORD` 作为登录 cookie 的签名密钥；如果你想把签名密钥和登录密码分开，再额外配置 `SESSION_SECRET`。
+同时需要在 [wrangler.jsonc](/home/gaoning/repos/Github/astro-r2/wrangler.jsonc) 里把 `IMAGES_BUCKET` 绑定到真实的 R2 bucket，并把 `R2_PUBLIC_URL` 改成真实的公开访问域名。
 
 ## 本地开发
 
@@ -32,20 +29,21 @@ bun run dev
 - `bun run build`：构建生产版本
 - `bun run preview`：预览构建产物
 - `bun run test`：运行内置测试
-- `bun run check`：运行 Astro 类型检查
+- `bun run check`：运行 React Router 类型生成和 TypeScript 检查
 - `bun run verify`：串联测试、类型检查和构建
 
 ## 部署步骤
 
-1. 在 Cloudflare R2 中创建存储桶，并生成具备读写权限的 Access Key。
+1. 在 Cloudflare R2 中创建存储桶。
 2. 为存储桶配置公开访问域名，作为 `R2_PUBLIC_URL`。
-3. 在 Vercel 导入本仓库，并填入上面的环境变量。
-4. 部署完成后访问 `/login`，使用 `ADMIN_PASSWORD` 登录。
+3. 在 [wrangler.jsonc](/home/gaoning/repos/Github/astro-r2/wrangler.jsonc) 中把 `IMAGES_BUCKET` 绑定到实际 bucket。
+4. 通过 Wrangler 或 Cloudflare Dashboard 配置 `ADMIN_PASSWORD` 和可选的 `MAX_FILE_SIZE`。
+5. 执行 `bun run deploy`，部署完成后访问 `/login`，使用 `ADMIN_PASSWORD` 登录。
 
 ## 功能概览
 
 - 上传页支持拖拽、文件选择和粘贴图片
-- 支持随机文件名和 WebP 压缩预览
+- 支持随机文件名和浏览器侧 WebP 压缩预览
 - 图库页支持网格/列表切换、分页、批量删除
 - 未登录访问上传页或图库页会自动跳转到登录页
 

@@ -1,36 +1,39 @@
 {
   "name": "astro-r2-image-host",
+  "private": true,
   "type": "module",
   "version": "0.0.1",
   "scripts": {
-    "dev": "astro dev",
-    "start": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "astro": "astro",
-    "check": "astro check",
+    "dev": "react-router dev",
+    "start": "react-router dev",
+    "build": "react-router build",
+    "preview": "bun run build && vite preview",
+    "deploy": "bun run build && wrangler deploy",
+    "check": "react-router typegen && tsc -b",
     "test": "bun test",
     "verify": "bun run test && bun run check && bun run build"
   },
   "dependencies": {
-    "@astrojs/react": "4.4.2",
-    "@astrojs/tailwind": "6.0.2",
-    "@astrojs/vercel": "9.0.4",
-    "@aws-sdk/client-s3": "^3.864.0",
-    "@aws-sdk/s3-request-presigner": "^3.864.0",
     "@types/mime-types": "^2.1.4",
-    "@types/react": "^18.3.23",
-    "@types/react-dom": "^18.3.7",
-    "astro": "5.18.0",
+    "isbot": "^5.1.31",
     "mime-types": "^2.1.35",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "sharp": "^0.33.5",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-router": "^7.13.1",
     "tailwindcss": "^3.4.17"
   },
   "devDependencies": {
-    "@astrojs/check": "0.9.6",
+    "@cloudflare/vite-plugin": "^1.13.5",
+    "@cloudflare/workers-types": "^4.20260224.0",
+    "@react-router/dev": "^7.13.1",
     "@types/node": "^20.19.10",
-    "typescript": "^5.9.2"
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "typescript": "^5.9.2",
+    "vite": "^6.3.6",
+    "vite-tsconfig-paths": "^5.1.4",
+    "wrangler": "^4.40.0"
   }
 }

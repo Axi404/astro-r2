@@ -332,12 +332,12 @@ export default function ImageGallery() {
 
   if (loading && images.length === 0) {
     return (
-      <div className="rounded-[30px] border border-[var(--line)] bg-[rgba(255,250,242,0.84)] p-10 shadow-[var(--shadow-soft)]">
+      <div className="panel panel-dark p-10">
         <div className="flex flex-col items-center justify-center gap-4 py-14 text-center">
-          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-[var(--accent)]"></div>
+          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-[var(--accent-soft)]"></div>
           <div>
-            <p className="font-display text-3xl text-[var(--ink)]">正在整理档案</p>
-            <p className="mt-2 text-sm tracking-[0.2em] text-[var(--muted)]">
+            <p className="font-display text-4xl text-[var(--paper)]">正在整理档案</p>
+            <p className="mt-2 text-sm tracking-[0.24em] text-[rgba(240,226,204,0.56)]">
               {loadingAll ? `已加载 ${loadedCount} 张` : 'Fetching current slice'}
             </p>
           </div>
@@ -348,9 +348,9 @@ export default function ImageGallery() {
 
   if (error) {
     return (
-      <div className="rounded-[30px] border border-[rgba(138,47,47,0.18)] bg-[rgba(255,246,242,0.92)] p-6 shadow-[var(--shadow-soft)]">
+      <div className="panel panel-light border-[rgba(207,80,58,0.18)] p-6">
         <div className="flex items-start space-x-4">
-          <div className="mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[rgba(138,47,47,0.12)] text-[var(--danger)]">
+          <div className="mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[rgba(207,80,58,0.12)] text-[var(--danger)]">
             <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
               <path
                 fillRule="evenodd"
@@ -360,16 +360,16 @@ export default function ImageGallery() {
             </svg>
           </div>
           <div className="flex-1">
-            <h3 className="font-display text-3xl text-[var(--ink)]">内容读取失败</h3>
+            <h3 className="font-display text-4xl text-[var(--ink)]">内容读取失败</h3>
             <p className="mt-3 text-sm leading-7 text-[var(--danger)]">{error}</p>
             {errorDetails ? (
-              <div className="mt-4 rounded-[20px] border border-[rgba(138,47,47,0.16)] bg-white/60 px-4 py-3 text-sm leading-7 text-[var(--ink-soft)]">
+              <div className="mt-4 rounded-[22px] border border-[rgba(207,80,58,0.16)] bg-white/60 px-4 py-3 text-sm leading-7 text-[var(--ink-soft)]">
                 {errorDetails}
               </div>
             ) : null}
             <button
               onClick={() => void handleRefresh()}
-              className="mt-5 rounded-full bg-[var(--danger)] px-5 py-3 text-sm font-semibold uppercase tracking-[0.24em] text-white transition-transform duration-300 hover:-translate-y-0.5"
+              className="button-danger mt-5"
             >
               重新抓取
             </button>
@@ -383,14 +383,16 @@ export default function ImageGallery() {
     <>
       <div className="space-y-6">
         <section className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
-          <div className="rounded-[30px] border border-[var(--line)] bg-[rgba(255,250,242,0.82)] p-6 shadow-[var(--shadow-soft)] backdrop-blur sm:p-7">
+          <div className={`panel p-6 backdrop-blur sm:p-7 ${browseMode === 'all' ? 'panel-dark' : 'panel-light'}`}>
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.38em] text-[var(--muted)]">Archive Console</p>
-                <h2 className="mt-3 font-display text-4xl text-[var(--ink)] sm:text-5xl">
+                <p className={browseMode === 'all' ? 'eyebrow text-[rgba(240,226,204,0.48)]' : 'eyebrow text-[var(--muted)]'}>
+                  Archive Console
+                </p>
+                <h2 className={browseMode === 'all' ? 'mt-3 font-display text-4xl text-[var(--paper)] sm:text-5xl lg:text-6xl' : 'mt-3 font-display text-4xl text-[var(--ink)] sm:text-5xl lg:text-6xl'}>
                   {browseMode === 'all' ? '已切入全量浏览' : '分页浏览当前档案'}
                 </h2>
-                <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--ink-soft)] sm:text-base">
+                <p className={browseMode === 'all' ? 'mt-4 max-w-2xl text-sm leading-7 text-[rgba(240,226,204,0.76)] sm:text-base' : 'mt-4 max-w-2xl text-sm leading-7 text-[var(--ink-soft)] sm:text-base'}>
                   {browseMode === 'all'
                     ? '页面会顺着 cursor 连续抓取所有对象，适合完整查看目前已经存在的全部内容。'
                     : '保留按页浏览的节奏，更适合快速定位、复制和批量操作。'}
@@ -401,14 +403,14 @@ export default function ImageGallery() {
                 <button
                   onClick={() => void loadAllImages()}
                   disabled={loadingAll || actionLoading}
-                  className="rounded-full bg-[var(--ink)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.26em] text-[var(--paper)] transition-all duration-300 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="button-primary disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {loadingAll ? `抓取中 ${loadedCount}` : '查看全部内容'}
                 </button>
                 <button
                   onClick={switchToPagedMode}
                   disabled={browseMode === 'page' || loading || actionLoading}
-                  className="rounded-full border border-[var(--line)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.26em] text-[var(--ink)] transition-all duration-300 hover:bg-[var(--paper-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`${browseMode === 'all' ? 'button-ghost' : 'button-secondary'} disabled:cursor-not-allowed disabled:opacity-50`}
                 >
                   返回分页
                 </button>
@@ -416,54 +418,54 @@ export default function ImageGallery() {
             </div>
 
             <div className="mt-6 grid gap-4 sm:grid-cols-3">
-              <div className="rounded-[22px] border border-[var(--line)] bg-white/70 p-4">
-                <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">Loaded</p>
-                <p className="mt-3 font-display text-4xl text-[var(--ink)]">{loadedCount}</p>
-                <p className="mt-2 text-sm text-[var(--muted)]">
+              <div className={browseMode === 'all' ? 'rounded-[24px] border border-[var(--line-inverse)] bg-[rgba(255,255,255,0.04)] p-5' : 'metric-card p-5'}>
+                <p className={browseMode === 'all' ? 'eyebrow text-[rgba(240,226,204,0.46)]' : 'eyebrow text-[var(--muted)]'}>Loaded</p>
+                <p className={browseMode === 'all' ? 'mt-4 font-display text-5xl text-[var(--paper)]' : 'mt-4 font-display text-5xl text-[var(--ink)]'}>{loadedCount}</p>
+                <p className={browseMode === 'all' ? 'mt-2 text-sm text-[rgba(240,226,204,0.68)]' : 'mt-2 text-sm text-[var(--muted)]'}>
                   {browseMode === 'all' ? '当前已拉取的全部对象数' : '当前页对象数'}
                 </p>
               </div>
-              <div className="rounded-[22px] border border-[var(--line)] bg-white/70 p-4">
-                <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">Selection</p>
-                <p className="mt-3 font-display text-4xl text-[var(--accent)]">{selectedImages.size}</p>
-                <p className="mt-2 text-sm text-[var(--muted)]">
+              <div className={browseMode === 'all' ? 'rounded-[24px] border border-[var(--line-inverse)] bg-[rgba(255,255,255,0.04)] p-5' : 'metric-card p-5'}>
+                <p className={browseMode === 'all' ? 'eyebrow text-[rgba(240,226,204,0.46)]' : 'eyebrow text-[var(--muted)]'}>Selection</p>
+                <p className="mt-4 font-display text-5xl text-[var(--accent)]">{selectedImages.size}</p>
+                <p className={browseMode === 'all' ? 'mt-2 text-sm text-[rgba(240,226,204,0.68)]' : 'mt-2 text-sm text-[var(--muted)]'}>
                   已选中，可直接进行批量删除
                 </p>
               </div>
-              <div className="rounded-[22px] border border-[var(--line)] bg-[rgba(31,22,12,0.93)] p-4 text-[var(--paper)]">
-                <p className="text-[11px] uppercase tracking-[0.28em] text-[rgba(244,236,223,0.56)]">Mode</p>
-                <p className="mt-3 font-display text-4xl">
+              <div className="panel panel-muted p-5">
+                <p className="eyebrow text-[var(--muted)]">Mode</p>
+                <p className="mt-4 font-display text-5xl text-[var(--ink)]">
                   {viewMode === 'grid' ? 'Grid' : 'List'}
                 </p>
-                <p className="mt-2 text-sm text-[rgba(244,236,223,0.74)]">
+                <p className="mt-2 text-sm text-[var(--ink-soft)]">
                   {browseMode === 'all' ? 'All archive view' : `Page ${pageIndex + 1}`}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-[30px] border border-[var(--line)] bg-[linear-gradient(160deg,rgba(255,251,245,0.8),rgba(229,208,179,0.52))] p-6 shadow-[var(--shadow-soft)]">
-            <p className="text-[11px] uppercase tracking-[0.38em] text-[var(--muted)]">Actions</p>
+          <div className="panel panel-muted p-6">
+            <p className="eyebrow text-[var(--muted)]">Actions</p>
             <div className="mt-5 flex flex-wrap gap-2">
               <button
                 onClick={selectAllImages}
                 disabled={images.length === 0 || actionLoading}
-                className="rounded-full border border-[var(--line)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.26em] text-[var(--ink)] transition-all duration-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="button-secondary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {selectedImages.size === images.length && images.length > 0 ? '取消全选' : '全选当前结果'}
               </button>
               <button
                 onClick={() => void deleteSelectedImages()}
                 disabled={selectedImages.size === 0 || actionLoading}
-                className="rounded-full bg-[var(--danger)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.26em] text-white transition-all duration-300 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+                className="button-danger disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {actionLoading ? '处理中...' : '删除选中'}
               </button>
               <button
                 onClick={() => setViewMode('grid')}
-                className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.26em] transition-all duration-300 ${
+                className={`rounded-full px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] transition-all duration-300 ${
                   viewMode === 'grid'
-                    ? 'bg-[var(--ink)] text-[var(--paper)]'
+                    ? 'bg-[var(--ink)] text-[var(--paper)] shadow-[0_16px_32px_rgba(23,18,13,0.16)]'
                     : 'border border-[var(--line)] bg-white/70 text-[var(--ink)] hover:bg-white'
                 }`}
               >
@@ -471,9 +473,9 @@ export default function ImageGallery() {
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.26em] transition-all duration-300 ${
+                className={`rounded-full px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] transition-all duration-300 ${
                   viewMode === 'list'
-                    ? 'bg-[var(--ink)] text-[var(--paper)]'
+                    ? 'bg-[var(--ink)] text-[var(--paper)] shadow-[0_16px_32px_rgba(23,18,13,0.16)]'
                     : 'border border-[var(--line)] bg-white/70 text-[var(--ink)] hover:bg-white'
                 }`}
               >
@@ -482,7 +484,7 @@ export default function ImageGallery() {
               <button
                 onClick={() => void handleRefresh()}
                 disabled={loading || actionLoading || loadingAll}
-                className="rounded-full border border-[var(--line)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.26em] text-[var(--ink)] transition-all duration-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="button-secondary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 刷新
               </button>
@@ -490,18 +492,26 @@ export default function ImageGallery() {
             <p className="mt-5 text-sm leading-7 text-[var(--ink-soft)]">
               点击缩略图可打开大图查看层；勾选框保留给批量操作，避免误触。
             </p>
+            <div className="mt-6 rounded-[24px] border border-[var(--line)] bg-[rgba(255,255,255,0.52)] p-5">
+              <p className="eyebrow text-[var(--muted)]">Current State</p>
+              <p className="mt-3 text-sm leading-7 text-[var(--ink-soft)]">
+                {browseMode === 'all'
+                  ? '当前结果来自一次完整抓取，适合滚动浏览和全量筛选。'
+                  : '当前结果保持分页节奏，适合快速查找、复制和局部删除。'}
+              </p>
+            </div>
           </div>
         </section>
 
         {images.length === 0 ? (
-          <div className="rounded-[30px] border border-[var(--line)] bg-[rgba(255,251,245,0.82)] p-12 text-center shadow-[var(--shadow-soft)]">
-            <p className="font-display text-4xl text-[var(--ink)]">档案暂时还是空的</p>
+          <div className="panel panel-light p-12 text-center">
+            <p className="font-display text-5xl text-[var(--ink)]">档案暂时还是空的</p>
             <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
               先去上传工作台放几张图，再回来整理。
             </p>
             <a
               href="/"
-              className="mt-6 inline-flex rounded-full bg-[var(--ink)] px-5 py-3 text-sm font-semibold uppercase tracking-[0.24em] text-[var(--paper)] transition-transform duration-300 hover:-translate-y-0.5"
+              className="button-primary mt-6"
             >
               去上传图片
             </a>
@@ -511,9 +521,9 @@ export default function ImageGallery() {
             {images.map((image, index) => (
               <article
                 key={image.key}
-                className={`group overflow-hidden rounded-[28px] border bg-[rgba(255,251,245,0.84)] shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(42,30,17,0.12)] ${
+                className={`group overflow-hidden rounded-[30px] border bg-[rgba(255,250,243,0.86)] shadow-[0_24px_54px_rgba(21,17,13,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_32px_72px_rgba(21,17,13,0.14)] ${
                   selectedImages.has(image.key)
-                    ? 'border-[rgba(178,98,45,0.42)] ring-2 ring-[rgba(178,98,45,0.18)]'
+                    ? 'border-[rgba(241,91,42,0.42)] ring-2 ring-[rgba(241,91,42,0.16)]'
                     : 'border-[var(--line)]'
                 }`}
               >
@@ -526,36 +536,36 @@ export default function ImageGallery() {
                     <img
                       src={image.url}
                       alt={getDisplayName(image.key)}
-                      className="h-60 w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                      className="h-72 w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                       loading="lazy"
                     />
                   </button>
-                  <div className="absolute left-3 top-3">
+                  <div className="absolute left-3 top-3 rounded-full border border-[rgba(255,232,198,0.18)] bg-[rgba(18,14,10,0.52)] p-2 backdrop-blur">
                     <input
                       type="checkbox"
                       checked={selectedImages.has(image.key)}
                       onChange={() => toggleImageSelection(image.key)}
-                      className="h-4 w-4 rounded border-[var(--line-strong)] bg-[var(--paper)] text-[var(--accent)] focus:ring-[rgba(178,98,45,0.3)]"
+                      className="h-4 w-4 rounded border-[rgba(255,232,198,0.24)] bg-[var(--paper)] text-[var(--accent)] focus:ring-[rgba(241,91,42,0.3)]"
                     />
                   </div>
                   <div className="absolute right-3 top-3 flex items-center gap-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
                     <button
                       onClick={() => void copyToClipboard(image.url)}
-                      className="rounded-full bg-[rgba(255,251,245,0.92)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--ink)] shadow-[0_10px_24px_rgba(21,16,10,0.16)]"
+                      className="rounded-full bg-[rgba(255,251,245,0.94)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--ink)] shadow-[0_10px_24px_rgba(21,16,10,0.16)]"
                     >
                       Copy
                     </button>
                     <button
                       onClick={() => void deleteImage(image.key)}
-                      className="rounded-full bg-[var(--danger)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-white shadow-[0_10px_24px_rgba(138,47,47,0.22)]"
+                      className="rounded-full bg-[var(--danger)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white shadow-[0_10px_24px_rgba(207,80,58,0.22)]"
                     >
                       Delete
                     </button>
                   </div>
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[rgba(17,13,10,0.74)] via-transparent to-transparent" />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[rgba(17,13,10,0.82)] via-[rgba(17,13,10,0.12)] to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 flex items-end justify-between px-5 pb-4">
                     <div className="min-w-0">
-                      <p className="text-[11px] uppercase tracking-[0.28em] text-[rgba(255,246,235,0.64)]">
+                      <p className="text-[11px] uppercase tracking-[0.28em] text-[rgba(255,246,235,0.62)]">
                         Item {String(index + 1).padStart(2, '0')}
                       </p>
                       <h3 className="mt-2 truncate font-display text-2xl text-[var(--paper)]">
@@ -565,38 +575,42 @@ export default function ImageGallery() {
                     <button
                       type="button"
                       onClick={() => setActiveImage(image)}
-                      className="rounded-full border border-[rgba(255,243,226,0.24)] bg-[rgba(255,255,255,0.12)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--paper)] backdrop-blur"
+                      className="rounded-full border border-[rgba(255,243,226,0.24)] bg-[rgba(255,255,255,0.12)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--paper)] backdrop-blur"
                     >
                       查看
                     </button>
                   </div>
                 </div>
 
-                <div className="grid gap-3 border-t border-[var(--line)] px-5 py-4 text-sm text-[var(--ink-soft)] sm:grid-cols-2">
+                <div className="grid gap-3 border-t border-[rgba(80,60,35,0.12)] px-5 py-4 text-sm text-[var(--ink-soft)] sm:grid-cols-3">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.26em] text-[var(--muted)]">Size</p>
+                    <p className="eyebrow text-[var(--muted)]">Size</p>
                     <p className="mt-1 text-[var(--ink)]">{formatFileSize(image.size)}</p>
                   </div>
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.26em] text-[var(--muted)]">Date</p>
+                    <p className="eyebrow text-[var(--muted)]">Date</p>
                     <p className="mt-1 text-[var(--ink)]">{new Date(image.uploadedAt).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <p className="eyebrow text-[var(--muted)]">Type</p>
+                    <p className="mt-1 truncate text-[var(--ink)]">{image.mimeType}</p>
                   </div>
                 </div>
               </article>
             ))}
           </div>
         ) : (
-          <div className="overflow-hidden rounded-[30px] border border-[var(--line)] bg-[rgba(255,251,245,0.84)] shadow-[var(--shadow-soft)]">
+          <div className="panel panel-light overflow-hidden p-0">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-[var(--line)]">
-                <thead className="bg-[rgba(238,225,204,0.42)]">
+                <thead className="bg-[rgba(238,225,204,0.46)]">
                   <tr>
                     <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--muted)]">
                       <input
                         type="checkbox"
                         checked={selectedImages.size === images.length && images.length > 0}
                         onChange={selectAllImages}
-                        className="h-4 w-4 rounded border-[var(--line-strong)] bg-[var(--paper)] text-[var(--accent)] focus:ring-[rgba(178,98,45,0.3)]"
+                        className="h-4 w-4 rounded border-[var(--line-strong)] bg-[var(--paper)] text-[var(--accent)] focus:ring-[rgba(241,91,42,0.3)]"
                       />
                     </th>
                     <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--muted)]">
@@ -621,13 +635,13 @@ export default function ImageGallery() {
                 </thead>
                 <tbody className="divide-y divide-[var(--line)]">
                   {images.map((image) => (
-                    <tr key={image.key} className="hover:bg-[rgba(255,255,255,0.42)]">
+                    <tr key={image.key} className="hover:bg-[rgba(255,255,255,0.4)]">
                       <td className="whitespace-nowrap px-6 py-5">
                         <input
                           type="checkbox"
                           checked={selectedImages.has(image.key)}
                           onChange={() => toggleImageSelection(image.key)}
-                          className="h-4 w-4 rounded border-[var(--line-strong)] bg-[var(--paper)] text-[var(--accent)] focus:ring-[rgba(178,98,45,0.3)]"
+                          className="h-4 w-4 rounded border-[var(--line-strong)] bg-[var(--paper)] text-[var(--accent)] focus:ring-[rgba(241,91,42,0.3)]"
                         />
                       </td>
                       <td className="whitespace-nowrap px-6 py-5">
@@ -663,19 +677,19 @@ export default function ImageGallery() {
                         <div className="flex flex-wrap gap-2">
                           <button
                             onClick={() => void copyToClipboard(image.url)}
-                            className="rounded-full border border-[var(--line)] bg-white/80 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--ink)]"
+                            className="rounded-full border border-[var(--line)] bg-white/80 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--ink)]"
                           >
                             Copy
                           </button>
                           <button
                             onClick={() => void copyToClipboard(`![Image](${image.url})`)}
-                            className="rounded-full border border-[var(--line)] bg-white/80 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--ink)]"
+                            className="rounded-full border border-[var(--line)] bg-white/80 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--ink)]"
                           >
                             Markdown
                           </button>
                           <button
                             onClick={() => void deleteImage(image.key)}
-                            className="rounded-full bg-[var(--danger)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-white"
+                            className="rounded-full bg-[var(--danger)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white"
                           >
                             Delete
                           </button>
@@ -690,10 +704,10 @@ export default function ImageGallery() {
         )}
 
         {browseMode === 'page' && images.length > 0 ? (
-          <div className="rounded-[30px] border border-[var(--line)] bg-[rgba(255,251,245,0.82)] p-5 shadow-[var(--shadow-soft)]">
+          <div className="panel panel-light p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">Pagination</p>
+                <p className="eyebrow text-[var(--muted)]">Pagination</p>
                 <p className="mt-2 text-sm leading-7 text-[var(--ink-soft)]">
                   第 {pageIndex + 1} 页，当前 {images.length} 张{nextCursor ? '，后面还有更多' : '，已经到尾页'}
                 </p>
@@ -702,17 +716,17 @@ export default function ImageGallery() {
                 <button
                   onClick={goToPreviousPage}
                   disabled={pageIndex === 0 || loading}
-                  className="rounded-full border border-[var(--line)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="button-secondary disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   上一页
                 </button>
-                <div className="rounded-full bg-[var(--ink)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--paper)]">
+                <div className="status-pill bg-[var(--ink)] text-[var(--paper)]">
                   {pageIndex + 1}
                 </div>
                 <button
                   onClick={goToNextPage}
                   disabled={!nextCursor || loading}
-                  className="rounded-full border border-[var(--line)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="button-secondary disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   下一页
                 </button>
@@ -722,15 +736,15 @@ export default function ImageGallery() {
         ) : null}
 
         {browseMode === 'all' && images.length > 0 ? (
-          <div className="rounded-[30px] border border-[var(--line)] bg-[rgba(255,251,245,0.84)] p-5 shadow-[var(--shadow-soft)]">
+          <div className="panel panel-dark p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">Complete Archive</p>
-                <p className="mt-2 text-sm leading-7 text-[var(--ink-soft)]">
+                <p className="eyebrow text-[rgba(240,226,204,0.48)]">Complete Archive</p>
+                <p className="mt-2 text-sm leading-7 text-[rgba(240,226,204,0.76)]">
                   已在当前页面加载全部 {images.length} 张内容，可直接滚动浏览。
                 </p>
               </div>
-              <div className="rounded-full border border-[var(--line)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--ink)]">
+              <div className="status-pill border border-[var(--line-inverse)] bg-[rgba(255,255,255,0.06)] text-[var(--paper)]">
                 Full sweep complete
               </div>
             </div>
@@ -742,14 +756,14 @@ export default function ImageGallery() {
 
       {activeImage ? (
         <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgba(18,14,10,0.82)] px-4 py-8 backdrop-blur-sm"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgba(12,9,7,0.82)] px-4 py-8 backdrop-blur-sm"
           onClick={() => setActiveImage(null)}
         >
           <div
-            className="grid max-h-full w-full max-w-6xl gap-0 overflow-hidden rounded-[32px] border border-[rgba(255,243,224,0.12)] bg-[rgba(29,21,13,0.96)] shadow-[0_40px_110px_rgba(0,0,0,0.38)] lg:grid-cols-[1.25fr_0.75fr]"
+            className="grid max-h-full w-full max-w-6xl gap-0 overflow-hidden rounded-[34px] border border-[rgba(255,243,224,0.12)] bg-[rgba(18,14,10,0.96)] shadow-[0_40px_110px_rgba(0,0,0,0.38)] lg:grid-cols-[1.25fr_0.75fr]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex min-h-[320px] items-center justify-center bg-[linear-gradient(180deg,rgba(44,32,19,0.95),rgba(21,15,10,0.98))] p-6">
+            <div className="flex min-h-[320px] items-center justify-center bg-[linear-gradient(180deg,rgba(36,29,22,0.96),rgba(14,11,8,0.98))] p-6">
               <img
                 src={activeImage.url}
                 alt={getDisplayName(activeImage.key)}
@@ -759,11 +773,11 @@ export default function ImageGallery() {
             <aside className="flex flex-col justify-between gap-6 border-t border-[rgba(255,243,224,0.1)] p-6 text-[var(--paper)] lg:border-l lg:border-t-0">
               <div>
                 <div className="flex items-center justify-between gap-4">
-                  <p className="text-[11px] uppercase tracking-[0.34em] text-[rgba(244,236,223,0.56)]">Current Item</p>
+                  <p className="eyebrow text-[rgba(240,226,204,0.48)]">Current Item</p>
                   <button
                     type="button"
                     onClick={() => setActiveImage(null)}
-                    className="rounded-full border border-[rgba(255,243,224,0.14)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--paper)]"
+                    className="button-ghost px-4 py-3"
                   >
                     Close
                   </button>
@@ -778,7 +792,7 @@ export default function ImageGallery() {
 
               <div className="grid gap-4">
                 <div className="rounded-[22px] border border-[rgba(255,243,224,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
-                  <p className="text-[11px] uppercase tracking-[0.28em] text-[rgba(244,236,223,0.56)]">Metadata</p>
+                  <p className="eyebrow text-[rgba(240,226,204,0.48)]">Metadata</p>
                   <div className="mt-4 space-y-3 text-sm text-[rgba(244,236,223,0.82)]">
                     <div className="flex justify-between gap-4">
                       <span>文件大小</span>
@@ -798,19 +812,19 @@ export default function ImageGallery() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => void copyToClipboard(activeImage.url)}
-                    className="rounded-full bg-[var(--paper)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--ink)]"
+                    className="button-secondary"
                   >
                     复制链接
                   </button>
                   <button
                     onClick={() => void copyToClipboard(`![Image](${activeImage.url})`)}
-                    className="rounded-full border border-[rgba(255,243,224,0.14)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--paper)]"
+                    className="button-ghost"
                   >
                     复制 Markdown
                   </button>
                   <button
                     onClick={() => void deleteImage(activeImage.key)}
-                    className="rounded-full bg-[var(--danger)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-white"
+                    className="button-danger"
                   >
                     删除
                   </button>

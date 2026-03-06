@@ -24,6 +24,7 @@ interface PreviewImage {
   originalSize: number;
   compressedSize?: number;
   compressedPreview?: string;
+  compressedFile?: File;
   isProcessing: boolean;
 }
 
@@ -156,6 +157,7 @@ export default function ImageUploader() {
               ...image,
               compressedPreview: undefined,
               compressedSize: undefined,
+              compressedFile: undefined,
               isProcessing: false,
             };
           })
@@ -178,6 +180,7 @@ export default function ImageUploader() {
               ...image,
               compressedPreview: undefined,
               compressedSize: undefined,
+              compressedFile: undefined,
               isProcessing: false,
             };
           }
@@ -214,6 +217,11 @@ export default function ImageUploader() {
                   ...item,
                   compressedSize: compressed.blob.size,
                   compressedPreview: compressed.url,
+                  compressedFile: new File(
+                    [compressed.blob],
+                    item.file.name.replace(/\.[^/.]+$/, '') + '.webp',
+                    { type: 'image/webp' }
+                  ),
                   isProcessing: false,
                 };
               })
@@ -312,9 +320,7 @@ export default function ImageUploader() {
   const uploadFile = async (file: File): Promise<UploadResponse> => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('quality', quality.toString());
     formData.append('useHashName', useHashName.toString());
-    formData.append('enableWebpCompression', enableWebpCompression.toString());
 
     const response = await fetch('/api/upload', {
       method: 'POST',
@@ -348,11 +354,16 @@ export default function ImageUploader() {
         snapshots,
         UPLOAD_CONCURRENCY,
         async (image) => {
+          const fileToUpload =
+            enableWebpCompression && canCompress(image.file) && image.compressedFile
+              ? image.compressedFile
+              : image.file;
+
           try {
-            const result = await uploadFile(image.file);
+            const result = await uploadFile(fileToUpload);
             return {
               id: image.id,
-              fileName: image.file.name,
+              fileName: fileToUpload.name,
               result,
             };
           } catch (error) {
@@ -515,12 +526,12 @@ export default function ImageUploader() {
     const delta = previewImage.originalSize - previewImage.compressedSize;
     const percent = Math.round(Math.abs(delta / previewImage.originalSize) * 100);
     const badgeClass = delta >= 0
-      ? 'bg-green-600/80 text-white'
-      : 'bg-amber-600/90 text-white';
+      ? 'bg-[rgba(58,160,114,0.92)] text-white'
+      : 'bg-[rgba(241,91,42,0.92)] text-[var(--night)]';
     const badgeText = delta >= 0 ? `-${percent}%` : `+${percent}%`;
 
     return (
-      <div className={`absolute bottom-1 right-1 rounded px-2 py-1 text-xs ${badgeClass}`}>
+      <div className={`absolute bottom-3 right-3 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${badgeClass}`}>
         {badgeText}
       </div>
     );
@@ -532,38 +543,38 @@ export default function ImageUploader() {
   return (
     <div className="space-y-6">
       <section className="grid gap-5 xl:grid-cols-[1.22fr_0.78fr]">
-        <div className="rounded-[32px] border border-[var(--line)] bg-[rgba(255,250,242,0.84)] p-6 shadow-[var(--shadow-soft)] backdrop-blur sm:p-7">
+        <div className="panel panel-light grain p-6 sm:p-7">
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.38em] text-[var(--muted)]">Upload Bench</p>
-                <h2 className="mt-3 font-display text-4xl text-[var(--ink)] sm:text-5xl">
-                  上传、预览、再决定是否发布
+                <p className="eyebrow text-[var(--muted)]">Upload Bench</p>
+                <h2 className="mt-3 max-w-3xl font-display text-4xl text-[var(--ink)] sm:text-5xl lg:text-6xl">
+                  先看结果，再决定怎么发
                 </h2>
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--ink-soft)] sm:text-base">
-                  把这里当成一个图像工作台：先拖进来，实时对比压缩效果，再统一上传并复制链接。
+                  上传区被拆成控制板、投递区和预览轨道三层。开关集中、流程顺序明确，避免上传前后信息混在一起。
                 </p>
               </div>
 
               <a
                 href="/gallery"
-                className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.26em] text-[var(--ink)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-white"
+                className="button-secondary"
               >
                 查看全部档案
                 <span aria-hidden="true">↗</span>
               </a>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-              <div className="space-y-4">
-                <div className="rounded-[24px] border border-[var(--line)] bg-white/72 p-4">
-                  <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">Naming</p>
+            <div className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
+              <div className="grid gap-4">
+                <div className="metric-card p-5">
+                  <p className="eyebrow text-[var(--muted)]">Naming</p>
                   <label className="mt-4 flex cursor-pointer items-start gap-3">
                     <input
                       type="checkbox"
                       checked={useHashName}
                       onChange={(event) => setUseHashName(event.target.checked)}
-                      className="mt-1 h-4 w-4 rounded border-[var(--line-strong)] bg-[var(--paper)] text-[var(--accent)] focus:ring-[rgba(178,98,45,0.28)]"
+                      className="mt-1 h-4 w-4 rounded border-[var(--line-strong)] bg-[var(--paper)] text-[var(--accent)] focus:ring-[rgba(241,91,42,0.28)]"
                     />
                     <span>
                       <span className="block text-sm font-semibold text-[var(--ink)]">使用随机文件名</span>
@@ -574,14 +585,14 @@ export default function ImageUploader() {
                   </label>
                 </div>
 
-                <div className="rounded-[24px] border border-[var(--line)] bg-white/72 p-4">
-                  <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">Compression</p>
+                <div className="metric-card p-5">
+                  <p className="eyebrow text-[var(--muted)]">Compression</p>
                   <label className="mt-4 flex cursor-pointer items-start gap-3">
                     <input
                       type="checkbox"
                       checked={enableWebpCompression}
                       onChange={(event) => setEnableWebpCompression(event.target.checked)}
-                      className="mt-1 h-4 w-4 rounded border-[var(--line-strong)] bg-[var(--paper)] text-[var(--accent)] focus:ring-[rgba(178,98,45,0.28)]"
+                      className="mt-1 h-4 w-4 rounded border-[var(--line-strong)] bg-[var(--paper)] text-[var(--accent)] focus:ring-[rgba(241,91,42,0.28)]"
                     />
                     <span>
                       <span className="block text-sm font-semibold text-[var(--ink)]">启用 WebP 压缩</span>
@@ -593,14 +604,14 @@ export default function ImageUploader() {
                 </div>
               </div>
 
-              <div className="rounded-[26px] border border-[var(--line)] bg-[linear-gradient(160deg,rgba(255,255,255,0.86),rgba(236,221,197,0.56))] p-5">
+              <div className="panel panel-muted p-5">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">Quality Dial</p>
-                    <p className="mt-3 font-display text-4xl text-[var(--ink)]">{quality}%</p>
+                    <p className="eyebrow text-[var(--muted)]">Quality Dial</p>
+                    <p className="mt-3 font-display text-5xl text-[var(--ink)]">{quality}%</p>
                   </div>
-                  <div className="rounded-full bg-[rgba(178,98,45,0.12)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--accent)]">
-                    {enableWebpCompression ? 'Preview active' : 'Bypass'}
+                  <div className="status-pill bg-[rgba(241,91,42,0.12)] text-[var(--accent)]">
+                    {enableWebpCompression ? 'Preview Active' : 'Bypass'}
                   </div>
                 </div>
 
@@ -612,11 +623,26 @@ export default function ImageUploader() {
                       max="100"
                       value={quality}
                       onChange={(event) => setQuality(Number.parseInt(event.target.value, 10))}
-                      className="h-2 w-full cursor-pointer appearance-none rounded-full bg-[rgba(34,27,18,0.12)]"
+                      className="h-2 w-full cursor-pointer appearance-none rounded-full bg-[rgba(23,18,13,0.14)]"
+                      style={{ accentColor: 'var(--accent)' }}
                     />
                     <div className="mt-2 flex justify-between text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
                       <span>Smaller</span>
                       <span>Sharper</span>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-[22px] border border-[var(--line)] bg-[rgba(255,255,255,0.5)] p-4">
+                        <p className="eyebrow text-[var(--muted)]">Low</p>
+                        <p className="mt-3 text-sm leading-6 text-[var(--ink-soft)]">更激进的压缩，适合分享图。</p>
+                      </div>
+                      <div className="rounded-[22px] border border-[var(--line)] bg-[rgba(255,255,255,0.5)] p-4">
+                        <p className="eyebrow text-[var(--muted)]">Balanced</p>
+                        <p className="mt-3 text-sm leading-6 text-[var(--ink-soft)]">默认推荐，通常能兼顾清晰度和体积。</p>
+                      </div>
+                      <div className="rounded-[22px] border border-[var(--line)] bg-[rgba(255,255,255,0.5)] p-4">
+                        <p className="eyebrow text-[var(--muted)]">High</p>
+                        <p className="mt-3 text-sm leading-6 text-[var(--ink-soft)]">保真优先，适合细节较多的图像。</p>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -628,21 +654,21 @@ export default function ImageUploader() {
             </div>
 
             <div
-              className={`relative overflow-hidden rounded-[32px] border p-8 transition-all duration-300 sm:p-12 ${
+              className={`relative overflow-hidden rounded-[34px] border p-8 transition-all duration-300 sm:p-12 ${
                 isDragging
-                  ? 'border-[rgba(178,98,45,0.44)] bg-[rgba(255,244,230,0.9)] shadow-[0_28px_70px_rgba(178,98,45,0.12)]'
-                  : 'border-[var(--line)] bg-[linear-gradient(160deg,rgba(255,253,248,0.92),rgba(244,231,210,0.54))] hover:border-[rgba(178,98,45,0.28)]'
+                  ? 'border-[rgba(241,91,42,0.42)] bg-[rgba(255,244,230,0.92)] shadow-[0_28px_70px_rgba(241,91,42,0.12)]'
+                  : 'border-[var(--line)] bg-[linear-gradient(155deg,rgba(255,252,246,0.9),rgba(238,224,200,0.62))] hover:border-[rgba(241,91,42,0.26)]'
               }`}
               onDragEnter={handleDragEnter}
               onDragLeave={handleDragLeave}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
             >
-              <div className="pointer-events-none absolute -right-10 top-0 h-40 w-40 rounded-full border border-[rgba(178,98,45,0.12)] bg-[radial-gradient(circle,_rgba(178,98,45,0.14),_transparent_70%)]" />
-              <div className="pointer-events-none absolute bottom-[-34px] left-[-16px] h-28 w-28 rounded-full bg-[radial-gradient(circle,_rgba(34,27,18,0.08),_transparent_68%)]" />
+              <div className="pointer-events-none absolute -right-8 top-0 h-40 w-40 rounded-full border border-[rgba(241,91,42,0.12)] bg-[radial-gradient(circle,_rgba(241,91,42,0.14),_transparent_70%)]" />
+              <div className="pointer-events-none absolute bottom-[-34px] left-[-16px] h-28 w-28 rounded-full bg-[radial-gradient(circle,_rgba(23,18,13,0.08),_transparent_68%)]" />
 
-              <div className="relative flex flex-col items-center justify-center space-y-4 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-[22px] border border-[var(--line)] bg-[rgba(31,22,12,0.95)] text-[var(--paper)] shadow-[0_18px_38px_rgba(19,13,8,0.22)]">
+              <div className="relative flex flex-col items-center justify-center space-y-5 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-[24px] border border-[var(--line-inverse)] bg-[linear-gradient(180deg,rgba(241,91,42,0.96),rgba(224,79,34,0.92))] text-[var(--night)] shadow-[0_18px_38px_rgba(241,91,42,0.22)]">
                   <svg
                     className="h-8 w-8"
                     fill="none"
@@ -657,15 +683,20 @@ export default function ImageUploader() {
                     />
                   </svg>
                 </div>
-                <div className="font-display text-4xl text-[var(--ink)]">
+                <div className="font-display text-4xl text-[var(--ink)] sm:text-5xl">
                   {isDragging ? '释放后开始准备预览' : '拖拽图片到这里'}
                 </div>
                 <p className="max-w-xl text-sm leading-7 text-[var(--ink-soft)] sm:text-base">
                   支持 JPG、PNG、GIF、WebP、SVG。你也可以直接点击选择文件，或者复制图片后按 Ctrl+V 粘贴。
                 </p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <span className="surface-tag">Drag & Drop</span>
+                  <span className="surface-tag">Paste</span>
+                  <span className="surface-tag">Multi Upload</span>
+                </div>
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="rounded-full bg-[var(--ink)] px-6 py-3 text-sm font-semibold uppercase tracking-[0.24em] text-[var(--paper)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[var(--accent)]"
+                  className="button-primary disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={isUploading}
                 >
                   {isUploading ? '上传中...' : '选择文件'}
@@ -685,29 +716,29 @@ export default function ImageUploader() {
         </div>
 
         <div className="space-y-5">
-          <div className="rounded-[32px] border border-[var(--line)] bg-[rgba(31,22,12,0.93)] p-6 text-[var(--paper)] shadow-[0_30px_80px_rgba(20,14,8,0.28)]">
-            <p className="text-[11px] uppercase tracking-[0.38em] text-[rgba(244,236,223,0.58)]">Session Snapshot</p>
+          <div className="panel panel-dark p-6">
+            <p className="eyebrow text-[rgba(240,226,204,0.48)]">Session Snapshot</p>
             <div className="mt-5 grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
-              <div className="rounded-[22px] border border-[rgba(244,236,223,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
-                <p className="text-[11px] uppercase tracking-[0.26em] text-[rgba(244,236,223,0.54)]">Queue</p>
-                <p className="mt-3 font-display text-4xl">{previewImages.length}</p>
-                <p className="mt-2 text-sm text-[rgba(244,236,223,0.72)]">当前待处理图片数</p>
+              <div className="rounded-[24px] border border-[var(--line-inverse)] bg-[rgba(255,255,255,0.04)] p-5">
+                <p className="eyebrow text-[rgba(240,226,204,0.46)]">Queue</p>
+                <p className="mt-4 font-display text-5xl">{previewImages.length}</p>
+                <p className="mt-2 text-sm text-[rgba(240,226,204,0.72)]">当前待处理图片数</p>
               </div>
-              <div className="rounded-[22px] border border-[rgba(244,236,223,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
-                <p className="text-[11px] uppercase tracking-[0.26em] text-[rgba(244,236,223,0.54)]">Compress</p>
-                <p className="mt-3 font-display text-4xl">{compressedCount}</p>
-                <p className="mt-2 text-sm text-[rgba(244,236,223,0.72)]">已有压缩对照的图片</p>
+              <div className="rounded-[24px] border border-[var(--line-inverse)] bg-[rgba(255,255,255,0.04)] p-5">
+                <p className="eyebrow text-[rgba(240,226,204,0.46)]">Preview Ready</p>
+                <p className="mt-4 font-display text-5xl">{compressedCount}</p>
+                <p className="mt-2 text-sm text-[rgba(240,226,204,0.72)]">已有压缩对照的图片</p>
               </div>
-              <div className="rounded-[22px] border border-[rgba(244,236,223,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
-                <p className="text-[11px] uppercase tracking-[0.26em] text-[rgba(244,236,223,0.54)]">Active</p>
-                <p className="mt-3 font-display text-4xl">{processingCount}</p>
-                <p className="mt-2 text-sm text-[rgba(244,236,223,0.72)]">正在计算中的预览</p>
+              <div className="rounded-[24px] border border-[var(--line-inverse)] bg-[rgba(255,255,255,0.04)] p-5">
+                <p className="eyebrow text-[rgba(240,226,204,0.46)]">Processing</p>
+                <p className="mt-4 font-display text-5xl">{processingCount}</p>
+                <p className="mt-2 text-sm text-[rgba(240,226,204,0.72)]">正在计算中的预览</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-[32px] border border-[var(--line)] bg-[rgba(255,251,245,0.82)] p-6 shadow-[var(--shadow-soft)]">
-            <p className="text-[11px] uppercase tracking-[0.38em] text-[var(--muted)]">Workflow</p>
+          <div className="panel panel-light p-6">
+            <p className="eyebrow text-[var(--muted)]">Workflow</p>
             <ul className="mt-5 space-y-4 text-sm leading-7 text-[var(--ink-soft)]">
               <li className="flex gap-3">
                 <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[var(--accent)]"></span>
@@ -722,16 +753,22 @@ export default function ImageUploader() {
                 <span>上传完成后可复制直链，也可以切去图库查看现有全部内容。</span>
               </li>
             </ul>
+            <div className="mt-6 rounded-[24px] border border-[var(--line)] bg-[rgba(255,255,255,0.56)] p-5">
+              <p className="eyebrow text-[var(--muted)]">Dispatch Rule</p>
+              <p className="mt-3 text-sm leading-7 text-[var(--ink-soft)]">
+                如果当前还有压缩任务未完成，上传按钮会自动保持不可用，避免在结果还没稳定时就直接发出。
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
       {previewImages.length > 0 ? (
-        <div className="rounded-[32px] border border-[var(--line)] bg-[rgba(255,250,242,0.84)] p-6 shadow-[var(--shadow-soft)]">
+        <div className="panel panel-light p-6 sm:p-7">
           <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.38em] text-[var(--muted)]">Preview Rail</p>
-              <h3 className="mt-3 font-display text-4xl text-[var(--ink)]">
+              <p className="eyebrow text-[var(--muted)]">Preview Rail</p>
+              <h3 className="mt-3 font-display text-4xl text-[var(--ink)] sm:text-5xl">
                 图片预览 ({previewImages.length} 张)
               </h3>
               <p className="mt-2 text-sm leading-7 text-[var(--ink-soft)]">
@@ -739,16 +776,19 @@ export default function ImageUploader() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <div className="status-pill bg-[rgba(255,255,255,0.7)] text-[var(--ink-soft)]">
+                {processingCount > 0 ? `处理中 ${processingCount}` : 'Ready'}
+              </div>
               <button
                 onClick={clearPreviews}
-                className="rounded-full border border-[var(--line)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--ink)] transition-all duration-300 hover:bg-white"
+                className="button-secondary"
               >
                 清空预览
               </button>
               <button
                 onClick={() => void uploadPreviewImages()}
                 disabled={isUploading || previewImages.some((image) => image.isProcessing)}
-                className="rounded-full bg-[var(--ink)] px-5 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--paper)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
+                className="button-primary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isUploading ? '上传中...' : '开始上传'}
               </button>
@@ -761,98 +801,114 @@ export default function ImageUploader() {
                 !enableWebpCompression || !previewImage.compressedPreview;
 
               return (
-                <div
+                <article
                   key={previewImage.id}
-                  className="space-y-4 rounded-[28px] border border-[var(--line)] bg-[rgba(255,255,255,0.72)] p-5 shadow-[0_18px_42px_rgba(34,27,18,0.08)]"
+                  className="overflow-hidden rounded-[30px] border border-[var(--line)] bg-[rgba(255,255,255,0.7)] shadow-[0_18px_42px_rgba(21,17,13,0.08)]"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">Pending item</p>
-                      <h4 className="mt-2 truncate font-display text-3xl text-[var(--ink)]">
-                        {previewImage.file.name}
-                      </h4>
-                      <p className="mt-2 text-sm text-[var(--muted)]">
-                        {formatFileSize(previewImage.originalSize)} • {previewImage.file.type}
-                      </p>
+                  <div className="border-b border-[rgba(80,60,35,0.12)] px-5 py-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="eyebrow text-[var(--muted)]">Pending Item</p>
+                        <h4 className="mt-2 truncate font-display text-3xl text-[var(--ink)]">
+                          {previewImage.file.name}
+                        </h4>
+                        <p className="mt-2 text-sm text-[var(--muted)]">
+                          {formatFileSize(previewImage.originalSize)} • {previewImage.file.type}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => void removePreviewImage(previewImage.id)}
+                        className="rounded-full border border-[var(--line)] bg-white/80 p-2 text-[var(--muted)] transition-colors hover:text-[var(--danger)]"
+                      >
+                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path
+                            fillRule="evenodd"
+                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
                     </div>
-                    <button
-                      onClick={() => void removePreviewImage(previewImage.id)}
-                      className="rounded-full border border-[var(--line)] bg-white/80 p-2 text-[var(--muted)] transition-colors hover:text-[var(--danger)]"
-                    >
-                      <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <h5 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">原始图片</h5>
-                      <div className="relative overflow-hidden rounded-[22px] border border-[var(--line)] bg-[rgba(245,239,229,0.72)] p-2">
-                        <img
-                          src={previewImage.preview}
-                          alt="Original"
-                          className="h-40 w-full rounded-[18px] object-cover"
-                        />
-                        <div className="absolute bottom-4 left-4 rounded-full bg-[rgba(17,13,10,0.74)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-white">
-                          {formatFileSize(previewImage.originalSize)}
+                  <div className="space-y-5 p-5">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <h5 className="eyebrow text-[var(--muted)]">Original</h5>
+                        <div className="relative overflow-hidden rounded-[24px] border border-[var(--line)] bg-[rgba(245,239,229,0.82)] p-2">
+                          <img
+                            src={previewImage.preview}
+                            alt="Original"
+                            className="h-44 w-full rounded-[18px] object-cover"
+                          />
+                          <div className="absolute bottom-4 left-4 rounded-full bg-[rgba(18,14,10,0.78)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-[var(--paper)]">
+                            {formatFileSize(previewImage.originalSize)}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <h5 className="eyebrow text-[var(--muted)]">
+                          {enableWebpCompression ? 'Processed / WebP' : 'Original Format'}
+                        </h5>
+                        <div className="relative overflow-hidden rounded-[24px] border border-[var(--line)] bg-[rgba(245,239,229,0.82)] p-2">
+                          {previewImage.isProcessing ? (
+                            <div className="flex h-44 w-full items-center justify-center rounded-[18px] border border-dashed border-[var(--line)] bg-white/70">
+                              <div className="text-center">
+                                <div className="mx-auto mb-3 h-7 w-7 animate-spin rounded-full border-b-2 border-[var(--accent)]"></div>
+                                <div className="eyebrow text-[var(--muted)]">压缩中</div>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <img
+                                src={showOriginalFallback ? previewImage.preview : previewImage.compressedPreview}
+                                alt="Processed"
+                                className="h-44 w-full rounded-[18px] object-cover"
+                              />
+                              <div className="absolute bottom-4 left-4 rounded-full bg-[rgba(18,14,10,0.78)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-[var(--paper)]">
+                                {formatFileSize(
+                                  showOriginalFallback
+                                    ? previewImage.originalSize
+                                    : previewImage.compressedSize || 0
+                                )}
+                              </div>
+                              {!showOriginalFallback ? renderCompressionBadge(previewImage) : null}
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <h5 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
-                        {enableWebpCompression ? '压缩后 (WebP)' : '保持原始格式'}
-                      </h5>
-                      <div className="relative overflow-hidden rounded-[22px] border border-[var(--line)] bg-[rgba(245,239,229,0.72)] p-2">
-                        {previewImage.isProcessing ? (
-                          <div className="flex h-40 w-full items-center justify-center rounded-[18px] border border-dashed border-[var(--line)] bg-white/70">
-                            <div className="text-center">
-                              <div className="mx-auto mb-2 h-6 w-6 animate-spin rounded-full border-b-2 border-[var(--accent)]"></div>
-                              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">压缩中...</div>
-                            </div>
-                          </div>
-                        ) : (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-[24px] border border-[var(--line)] bg-[rgba(255,255,255,0.58)] p-4">
+                        <p className="eyebrow text-[var(--muted)]">Source</p>
+                        <p className="mt-3 text-sm leading-7 text-[var(--ink-soft)]">
+                          原图保持在队列中，上传时会按当前开关和质量参数处理。
+                        </p>
+                      </div>
+                      <div className="rounded-[24px] border border-[var(--line)] bg-[rgba(255,255,255,0.58)] p-4">
+                        <p className="eyebrow text-[var(--muted)]">Delta</p>
+                        {previewImage.compressedSize && !previewImage.isProcessing ? (
                           <>
-                            <img
-                              src={showOriginalFallback ? previewImage.preview : previewImage.compressedPreview}
-                              alt="Processed"
-                              className="h-40 w-full rounded-[18px] object-cover"
-                            />
-                            <div className="absolute bottom-4 left-4 rounded-full bg-[rgba(17,13,10,0.74)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-white">
-                              {formatFileSize(
-                                showOriginalFallback
-                                  ? previewImage.originalSize
-                                  : previewImage.compressedSize || 0
-                              )}
-                            </div>
-                            {!showOriginalFallback ? renderCompressionBadge(previewImage) : null}
+                            <p className="mt-3 text-sm font-semibold text-[var(--ink)]">
+                              {formatFileSize(previewImage.originalSize)} → {formatFileSize(previewImage.compressedSize)}
+                            </p>
+                            <p className="mt-2 text-sm leading-7 text-[var(--ink-soft)]">
+                              {previewImage.originalSize >= previewImage.compressedSize
+                                ? `节省 ${formatFileSize(previewImage.originalSize - previewImage.compressedSize)}`
+                                : `增加 ${formatFileSize(previewImage.compressedSize - previewImage.originalSize)}`}
+                            </p>
                           </>
+                        ) : (
+                          <p className="mt-3 text-sm leading-7 text-[var(--ink-soft)]">
+                            {previewImage.isProcessing ? '正在计算压缩结果。' : '当前保持原始格式，不生成差值。'}
+                          </p>
                         )}
                       </div>
                     </div>
                   </div>
-
-                  {previewImage.compressedSize && !previewImage.isProcessing ? (
-                    <div className="rounded-[22px] border border-[rgba(39,100,90,0.16)] bg-[rgba(245,252,249,0.95)] p-4">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-[var(--success)]">压缩效果:</span>
-                        <span className="font-medium text-[var(--ink)]">
-                          {formatFileSize(previewImage.originalSize)} → {formatFileSize(previewImage.compressedSize)}
-                        </span>
-                      </div>
-                      <div className="mt-2 text-xs uppercase tracking-[0.16em] text-[var(--success)]">
-                        {previewImage.originalSize >= previewImage.compressedSize
-                          ? `节省 ${formatFileSize(previewImage.originalSize - previewImage.compressedSize)}`
-                          : `增加 ${formatFileSize(previewImage.compressedSize - previewImage.originalSize)}`}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
+                </article>
               );
             })}
           </div>
@@ -860,15 +916,15 @@ export default function ImageUploader() {
       ) : null}
 
       {uploadedImages.length > 0 ? (
-        <div className="rounded-[32px] border border-[var(--line)] bg-[rgba(255,250,242,0.84)] p-6 shadow-[var(--shadow-soft)]">
+        <div className="panel panel-light p-6 sm:p-7">
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.38em] text-[var(--muted)]">Recent Dispatches</p>
-              <h3 className="mt-3 font-display text-4xl text-[var(--ink)]">最近上传的图片</h3>
+              <p className="eyebrow text-[var(--muted)]">Recent Dispatches</p>
+              <h3 className="mt-3 font-display text-4xl text-[var(--ink)] sm:text-5xl">最近上传的图片</h3>
             </div>
             <a
               href="/gallery"
-              className="rounded-full border border-[var(--line)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--ink)] transition-all duration-300 hover:bg-white"
+              className="button-secondary"
             >
               去完整档案页
             </a>
@@ -877,12 +933,12 @@ export default function ImageUploader() {
             {uploadedImages.map((image, index) => (
               <div
                 key={`${image.key}-${index}`}
-                className="flex items-center gap-4 rounded-[24px] border border-[var(--line)] bg-white/72 p-4 shadow-[0_18px_38px_rgba(34,27,18,0.07)]"
+                className="flex flex-col gap-4 rounded-[28px] border border-[var(--line)] bg-[rgba(255,255,255,0.68)] p-4 shadow-[0_18px_38px_rgba(21,17,13,0.07)] sm:flex-row sm:items-center"
               >
                 <img
                   src={image.url}
                   alt="Uploaded"
-                  className="h-20 w-20 rounded-[20px] object-cover"
+                  className="h-24 w-full rounded-[22px] object-cover sm:w-24"
                 />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-display text-2xl text-[var(--ink)]">
@@ -898,13 +954,13 @@ export default function ImageUploader() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => void copyToClipboard(image.url)}
-                    className="rounded-full border border-[var(--line)] bg-white/80 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--ink)] transition-colors hover:bg-white"
+                    className="button-secondary px-4 py-3"
                   >
                     Copy
                   </button>
                   <button
                     onClick={() => void copyToClipboard(`![Image](${image.url})`)}
-                    className="rounded-full bg-[var(--ink)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--paper)] transition-colors hover:bg-[var(--accent)]"
+                    className="button-primary px-4 py-3"
                   >
                     Markdown
                   </button>

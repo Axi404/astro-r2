@@ -44,11 +44,33 @@ function getDisplayName(key: string): string {
   return key.split('/').pop() || key;
 }
 
+function getDisplayStem(key: string): string {
+  const displayName = getDisplayName(key);
+  const stem = displayName.replace(/\.[^.]+$/, '');
+  return stem || displayName;
+}
+
+function getFileExtension(key: string): string {
+  const match = getDisplayName(key).match(/\.([^.]+)$/);
+  return match ? match[1].toUpperCase() : '';
+}
+
+function getMimeLabel(mimeType: string): string {
+  return mimeType.replace('image/', '').toUpperCase();
+}
+
 function formatShortDate(value: string): string {
   return new Intl.DateTimeFormat('zh-CN', {
     year: 'numeric',
     month: 'numeric',
     day: 'numeric',
+  }).format(new Date(value));
+}
+
+function formatClockTime(value: string): string {
+  return new Intl.DateTimeFormat('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(new Date(value));
 }
 
@@ -69,6 +91,21 @@ function getToggleButtonClass(active: boolean): string {
       ? 'border-[var(--line-strong)] bg-[var(--paper-strong)] text-[var(--ink)] shadow-[0_8px_18px_rgba(24,28,24,0.06)]'
       : 'border-transparent bg-transparent text-[var(--ink-soft)] hover:border-[var(--line)] hover:bg-[rgba(255,255,255,0.52)] hover:text-[var(--ink)]',
   ].join(' ');
+}
+
+function getActionButtonClass(variant: 'secondary' | 'ghost' | 'danger'): string {
+  const base =
+    'inline-flex items-center justify-center rounded-[12px] border px-3 py-2.5 text-[12px] font-medium whitespace-nowrap transition-all duration-200';
+
+  if (variant === 'secondary') {
+    return `${base} border-[var(--line)] bg-[rgba(255,252,247,0.82)] text-[var(--ink)] hover:border-[var(--line-strong)] hover:bg-[rgba(255,255,255,0.92)]`;
+  }
+
+  if (variant === 'ghost') {
+    return `${base} border-[rgba(89,103,83,0.16)] bg-transparent text-[var(--ink-soft)] hover:border-[var(--line)] hover:bg-[rgba(255,255,255,0.82)] hover:text-[var(--ink)]`;
+  }
+
+  return `${base} border-[rgba(159,97,83,0.18)] bg-[rgba(159,97,83,0.9)] text-[var(--paper-strong)] hover:shadow-[0_10px_24px_rgba(159,97,83,0.14)]`;
 }
 
 export default function ImageGallery() {
@@ -581,30 +618,26 @@ export default function ImageGallery() {
                     />
                   </div>
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[rgba(24,28,24,0.84)] via-[rgba(24,28,24,0.36)] to-transparent px-4 pb-4 pt-12">
-                    <div className="flex items-end justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(252,248,241,0.72)]">
-                          Item {String(index + 1).padStart(2, '0')}
-                        </p>
-                        <h3 className="mt-2 truncate text-[1.16rem] font-semibold text-[var(--paper-strong)]">
-                          {getDisplayName(image.key)}
-                        </h3>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setActiveImage(image)}
-                        className="rounded-[12px] border border-[rgba(255,255,255,0.18)] bg-[rgba(255,255,255,0.08)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--paper-strong)] backdrop-blur hover:bg-[rgba(255,255,255,0.14)]"
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(252,248,241,0.72)]">
+                        Item {String(index + 1).padStart(2, '0')}  /  {getMimeLabel(image.mimeType)}
+                      </p>
+                      <h3
+                        title={getDisplayName(image.key)}
+                        className="mt-2 truncate text-[1.08rem] font-medium text-[var(--paper-strong)]"
                       >
-                        查看
-                      </button>
+                        {getDisplayStem(image.key)}
+                      </h3>
                     </div>
                   </div>
                 </div>
 
                 <div className="grid gap-4 p-4">
-                  <p className="truncate text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-                    {image.key}
-                  </p>
+                  <div className="min-w-0">
+                    <p className="truncate font-mono text-[12px] text-[var(--muted)]" title={getDisplayName(image.key)}>
+                      {getDisplayName(image.key)}
+                    </p>
+                  </div>
 
                   <div className="grid grid-cols-3 gap-3 border-t border-[var(--line)] pt-4 text-sm text-[var(--ink-soft)]">
                     <div className="min-w-0">
@@ -622,27 +655,28 @@ export default function ImageGallery() {
                     <div className="min-w-0">
                       <p className="eyebrow text-[var(--muted)]">格式</p>
                       <p className="mt-2 truncate font-medium text-[var(--ink)]">
-                        {image.mimeType}
+                        {getFileExtension(image.key) || getMimeLabel(image.mimeType)}
                       </p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-[1fr_0.78fr_0.84fr] gap-2">
                     <button
                       onClick={() => void copyToClipboard(image.url)}
-                      className="button-secondary px-0 py-2.5"
+                      className={getActionButtonClass('secondary')}
                     >
-                      链接
+                      复制
                     </button>
                     <button
                       onClick={() => void copyToClipboard(`![Image](${image.url})`)}
-                      className="button-ghost px-0 py-2.5"
+                      className={getActionButtonClass('ghost')}
+                      title="复制 Markdown"
                     >
-                      Markdown
+                      MD
                     </button>
                     <button
                       onClick={() => void deleteImage(image.key)}
-                      className="button-danger px-0 py-2.5"
+                      className={getActionButtonClass('danger')}
                     >
                       删除
                     </button>
@@ -678,13 +712,13 @@ export default function ImageGallery() {
                       : 'border-[var(--line)] hover:border-[var(--line-strong)]'
                   }`}
                 >
-                  <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
-                    <div className="flex items-start gap-3 xl:min-w-0 xl:flex-[1.05]">
+                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(16rem,0.9fr)_auto] xl:items-center">
+                    <div className="flex min-w-0 items-center gap-4">
                       <input
                         type="checkbox"
                         checked={selectedImages.has(image.key)}
                         onChange={() => toggleImageSelection(image.key)}
-                        className="mt-6 h-4 w-4 rounded border-[var(--line-strong)] bg-[var(--paper)] text-[var(--accent)] focus:ring-[rgba(241,91,42,0.3)]"
+                        className="h-4 w-4 shrink-0 rounded border-[var(--line-strong)] bg-[var(--paper)] text-[var(--accent)] focus:ring-[rgba(241,91,42,0.3)]"
                       />
                       <button type="button" onClick={() => setActiveImage(image)} className="shrink-0">
                         <img
@@ -695,57 +729,64 @@ export default function ImageGallery() {
                         />
                       </button>
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+                        <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
                           <span>Item {String(index + 1).padStart(2, '0')}</span>
-                          <span className="h-px w-5 bg-[var(--line)]" />
-                          <span>{image.mimeType}</span>
+                          <span className="h-px w-4 bg-[var(--line)]" />
+                          <span>{getMimeLabel(image.mimeType)}</span>
                         </div>
-                        <h3 className="mt-3 truncate font-display text-[1.35rem] leading-tight text-[var(--ink)]">
-                          {getDisplayName(image.key)}
+                        <h3
+                          title={getDisplayName(image.key)}
+                          className="mt-2 truncate font-display text-[1.22rem] leading-tight text-[var(--ink)]"
+                        >
+                          {getDisplayStem(image.key)}
                         </h3>
-                        <p className="mt-2 truncate text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
-                          {image.key}
+                        <p className="mt-2 truncate font-mono text-[12px] text-[var(--muted)]" title={getDisplayName(image.key)}>
+                          {getDisplayName(image.key)}
                         </p>
                       </div>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-3 xl:flex-[0.95]">
-                      <div className="rounded-[14px] border border-[var(--line)] bg-[rgba(255,255,255,0.56)] p-3">
+                    <div className="grid gap-4 sm:grid-cols-3 xl:gap-5">
+                      <div className="min-w-0">
                         <p className="eyebrow text-[var(--muted)]">大小</p>
                         <p className="mt-2 text-sm font-medium text-[var(--ink)]">
                           {formatFileSize(image.size)}
                         </p>
                       </div>
-                      <div className="rounded-[14px] border border-[var(--line)] bg-[rgba(255,255,255,0.56)] p-3">
+                      <div className="min-w-0">
                         <p className="eyebrow text-[var(--muted)]">日期</p>
                         <p className="mt-2 text-sm font-medium text-[var(--ink)]">
-                          {formatDateTime(image.uploadedAt)}
+                          {formatShortDate(image.uploadedAt)}
+                        </p>
+                        <p className="mt-1 text-[12px] text-[var(--muted)]">
+                          {formatClockTime(image.uploadedAt)}
                         </p>
                       </div>
-                      <div className="rounded-[14px] border border-[var(--line)] bg-[rgba(255,255,255,0.56)] p-3">
+                      <div className="min-w-0">
                         <p className="eyebrow text-[var(--muted)]">格式</p>
-                        <p className="mt-2 truncate text-sm font-medium text-[var(--ink)]">
-                          {image.mimeType}
+                        <p className="mt-2 text-sm font-medium text-[var(--ink)]">
+                          {getFileExtension(image.key) || getMimeLabel(image.mimeType)}
                         </p>
                       </div>
                     </div>
 
-                    <div className="grid gap-2 sm:grid-cols-3 xl:w-[18rem]">
+                    <div className="grid grid-cols-3 gap-2 xl:w-[13.5rem]">
                       <button
                         onClick={() => void copyToClipboard(image.url)}
-                        className="button-secondary px-0 py-2.5"
+                        className={getActionButtonClass('secondary')}
                       >
-                        链接
+                        复制
                       </button>
                       <button
                         onClick={() => void copyToClipboard(`![Image](${image.url})`)}
-                        className="button-ghost px-0 py-2.5"
+                        className={getActionButtonClass('ghost')}
+                        title="复制 Markdown"
                       >
-                        Markdown
+                        MD
                       </button>
                       <button
                         onClick={() => void deleteImage(image.key)}
-                        className="button-danger px-0 py-2.5"
+                        className={getActionButtonClass('danger')}
                       >
                         删除
                       </button>

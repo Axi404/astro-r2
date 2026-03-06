@@ -5,6 +5,7 @@ export default [
   layout('routes/_app.tsx', [
     index('routes/home.tsx'),
     route('gallery', 'routes/gallery.tsx'),
+    route('about', 'routes/about.tsx'),
   ]),
   route('api/upload', 'routes/api.upload.ts'),
   route('api/images', 'routes/api.images.ts'),

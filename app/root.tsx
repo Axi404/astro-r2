@@ -18,7 +18,7 @@ export const links: Route.LinksFunction = () => [
 export const meta: Route.MetaFunction = () => [
   { title: 'Lightframe Archive' },
   { name: 'description', content: 'A React Router image host built for fast uploads and careful archive work.' },
-  { name: 'theme-color', content: '#0d0b08' },
+  { name: 'theme-color', content: '#f4f1ea' },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {

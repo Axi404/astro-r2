@@ -370,7 +370,7 @@ export default function ImageGallery() {
   const copyToClipboard = async (text: string, label: '链接' | 'Markdown' = '链接') => {
     try {
       await navigator.clipboard.writeText(text);
-      showSuccess(`复制成功：${label} 已写入剪贴板`, 2200);
+      showSuccess(`已复制${label}`, 1800);
     } catch (copyError) {
       console.error('复制失败:', copyError);
       showError('复制失败，请手动复制');

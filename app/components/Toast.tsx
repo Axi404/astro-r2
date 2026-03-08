@@ -35,18 +35,6 @@ export default function Toast({ message, type = 'success', duration = 3000, onCl
     }
   };
 
-  const getTypeLabel = () => {
-    if (type === 'success') {
-      return '操作成功';
-    }
-
-    if (type === 'error') {
-      return '操作失败';
-    }
-
-    return '提示';
-  };
-
   return (
     <div
       role="status"
@@ -77,10 +65,7 @@ export default function Toast({ message, type = 'success', duration = 3000, onCl
             </svg>
           </div>
         )}
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold tracking-[0.1em] text-[var(--muted)]">{getTypeLabel()}</p>
-          <p className="mt-1 text-sm font-semibold leading-6">{message}</p>
-        </div>
+        <p className="min-w-0 text-sm font-semibold leading-6">{message}</p>
       </div>
     </div>
   );

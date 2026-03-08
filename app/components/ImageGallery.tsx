@@ -86,7 +86,7 @@ function formatDateTime(value: string): string {
 
 function getToggleButtonClass(active: boolean): string {
   return [
-    'inline-flex items-center justify-center rounded-[11px] border px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] transition-all duration-200',
+    'inline-flex items-center justify-center rounded-[11px] border px-4 py-2.5 text-[13px] font-semibold transition-all duration-200',
     active
       ? 'border-[var(--line-strong)] bg-[var(--paper-strong)] text-[var(--ink)] shadow-[0_8px_18px_rgba(24,28,24,0.06)]'
       : 'border-transparent bg-transparent text-[var(--ink-soft)] hover:border-[var(--line)] hover:bg-[rgba(255,255,255,0.52)] hover:text-[var(--ink)]',
@@ -95,7 +95,7 @@ function getToggleButtonClass(active: boolean): string {
 
 function getActionButtonClass(variant: 'secondary' | 'ghost' | 'danger'): string {
   const base =
-    'inline-flex items-center justify-center rounded-[12px] border px-3 py-2.5 text-[12px] font-medium whitespace-nowrap transition-all duration-200';
+    'inline-flex items-center justify-center rounded-[12px] border px-3 py-2.5 text-[13px] font-semibold whitespace-nowrap transition-all duration-200';
 
   if (variant === 'secondary') {
     return `${base} border-[var(--line)] bg-[rgba(255,252,247,0.82)] text-[var(--ink)] hover:border-[var(--line-strong)] hover:bg-[rgba(255,255,255,0.92)]`;
@@ -367,10 +367,10 @@ export default function ImageGallery() {
     setPageIndex((prev) => prev + 1);
   };
 
-  const copyToClipboard = async (text: string) => {
+  const copyToClipboard = async (text: string, label: '链接' | 'Markdown' = '链接') => {
     try {
       await navigator.clipboard.writeText(text);
-      showSuccess('链接已复制到剪贴板');
+      showSuccess(`复制成功：${label} 已写入剪贴板`, 2200);
     } catch (copyError) {
       console.error('复制失败:', copyError);
       showError('复制失败，请手动复制');
@@ -395,8 +395,8 @@ export default function ImageGallery() {
   };
 
   const isAllSelected = images.length > 0 && selectedImages.size === images.length;
-  const viewLabel = viewMode === 'grid' ? '网格卡片' : '清单视图';
-  const browseLabel = browseMode === 'all' ? '全部读取' : `第 ${pageIndex + 1} 页`;
+  const viewLabel = viewMode === 'grid' ? '网格' : '列表';
+  const browseLabel = browseMode === 'all' ? '全部模式' : `第 ${pageIndex + 1} 页`;
 
   if (loading && images.length === 0) {
     return (
@@ -439,7 +439,7 @@ export default function ImageGallery() {
               onClick={() => void handleRefresh()}
               className="button-danger mt-5"
             >
-              重新抓取
+              重新加载
             </button>
           </div>
         </div>
@@ -453,7 +453,7 @@ export default function ImageGallery() {
         <section className="panel panel-light p-5 sm:p-6">
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
             <div className="min-w-0">
-              <p className="eyebrow text-[var(--muted)]">Archive Desk</p>
+              <p className="eyebrow text-[var(--muted)]">图库管理</p>
               <div className="mt-4 flex flex-wrap gap-x-8 gap-y-4">
                 <div className="min-w-[6.5rem]">
                   <p className="font-display text-[2.5rem] leading-none text-[var(--ink)]">
@@ -473,7 +473,7 @@ export default function ImageGallery() {
                 </div>
                 <div className="min-w-[8rem]">
                   <p className="font-display text-[2.1rem] leading-none text-[var(--ink)]">
-                    {viewMode === 'grid' ? 'Grid' : 'List'}
+                    {viewMode === 'grid' ? '网格' : '列表'}
                   </p>
                   <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
                     {browseLabel}
@@ -481,7 +481,7 @@ export default function ImageGallery() {
                 </div>
               </div>
               <p className="mt-4 max-w-2xl text-sm leading-8 text-[var(--ink-soft)]">
-                读取范围、视图切换和批量动作都收束在右侧控制区里，让主体区域只负责看图和挑图。
+                右侧可控制读取范围、视图和批量操作，主区域专注看图和筛选。
               </p>
             </div>
 
@@ -539,7 +539,7 @@ export default function ImageGallery() {
                   <div className="mb-2 flex items-center justify-between px-3">
                     <p className="eyebrow text-[var(--muted)]">操作</p>
                     <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-                      {selectedImages.size > 0 ? `${selectedImages.size} selected` : 'ready'}
+                      {selectedImages.size > 0 ? `已选 ${selectedImages.size}` : '可操作'}
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -573,7 +573,7 @@ export default function ImageGallery() {
 
         {images.length === 0 ? (
           <div className="panel panel-light p-12 text-center sm:p-14">
-            <p className="eyebrow text-[var(--muted)]">Empty Archive</p>
+            <p className="eyebrow text-[var(--muted)]">空图库</p>
             <p className="mt-4 font-display text-4xl text-[var(--ink)]">这里还没有图片</p>
             <p className="mt-3 text-sm leading-8 text-[var(--muted)]">
               先上传一些内容，再回来整理和复制链接。
@@ -620,7 +620,7 @@ export default function ImageGallery() {
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[rgba(24,28,24,0.84)] via-[rgba(24,28,24,0.36)] to-transparent px-4 pb-4 pt-12">
                     <div className="min-w-0">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(252,248,241,0.72)]">
-                        Item {String(index + 1).padStart(2, '0')}  /  {getMimeLabel(image.mimeType)}
+                        第 {String(index + 1).padStart(2, '0')} 张  /  {getMimeLabel(image.mimeType)}
                       </p>
                       <h3
                         title={getDisplayName(image.key)}
@@ -662,17 +662,17 @@ export default function ImageGallery() {
 
                   <div className="grid grid-cols-[1fr_0.78fr_0.84fr] gap-2">
                     <button
-                      onClick={() => void copyToClipboard(image.url)}
+                      onClick={() => void copyToClipboard(image.url, '链接')}
                       className={getActionButtonClass('secondary')}
                     >
                       复制
                     </button>
                     <button
-                      onClick={() => void copyToClipboard(`![Image](${image.url})`)}
+                      onClick={() => void copyToClipboard(`![Image](${image.url})`, 'Markdown')}
                       className={getActionButtonClass('ghost')}
                       title="复制 Markdown"
                     >
-                      MD
+                      Markdown
                     </button>
                     <button
                       onClick={() => void deleteImage(image.key)}
@@ -698,7 +698,7 @@ export default function ImageGallery() {
                 <span>全选当前结果</span>
               </label>
               <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-                {images.length} items
+                共 {images.length} 项
               </div>
             </div>
 
@@ -730,7 +730,7 @@ export default function ImageGallery() {
                       </button>
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-                          <span>Item {String(index + 1).padStart(2, '0')}</span>
+                          <span>第 {String(index + 1).padStart(2, '0')} 张</span>
                           <span className="h-px w-4 bg-[var(--line)]" />
                           <span>{getMimeLabel(image.mimeType)}</span>
                         </div>
@@ -772,17 +772,17 @@ export default function ImageGallery() {
 
                     <div className="grid grid-cols-3 gap-2 xl:w-[13.5rem]">
                       <button
-                        onClick={() => void copyToClipboard(image.url)}
+                        onClick={() => void copyToClipboard(image.url, '链接')}
                         className={getActionButtonClass('secondary')}
                       >
                         复制
                       </button>
                       <button
-                        onClick={() => void copyToClipboard(`![Image](${image.url})`)}
+                        onClick={() => void copyToClipboard(`![Image](${image.url})`, 'Markdown')}
                         className={getActionButtonClass('ghost')}
                         title="复制 Markdown"
                       >
-                        MD
+                        Markdown
                       </button>
                       <button
                         onClick={() => void deleteImage(image.key)}
@@ -802,7 +802,7 @@ export default function ImageGallery() {
           <div className="panel panel-light p-5 sm:p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="eyebrow text-[var(--muted)]">Pagination</p>
+                <p className="eyebrow text-[var(--muted)]">分页浏览</p>
                 <p className="mt-2 text-sm leading-7 text-[var(--ink-soft)]">
                   第 {pageIndex + 1} 页，当前 {images.length} 张{nextCursor ? '，后面还有更多' : '，已经到尾页'}
                 </p>
@@ -834,13 +834,13 @@ export default function ImageGallery() {
           <div className="panel panel-muted p-5 sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="eyebrow text-[var(--muted)]">Complete Archive</p>
+                <p className="eyebrow text-[var(--muted)]">全量读取完成</p>
                 <p className="mt-2 text-sm leading-7 text-[var(--ink-soft)]">
                   已在当前页面加载全部 {images.length} 张内容，可直接滚动浏览。
                 </p>
               </div>
               <div className="status-pill text-[var(--ink-soft)]">
-                Full sweep complete
+                当前为全量模式
               </div>
             </div>
           </div>
@@ -868,13 +868,13 @@ export default function ImageGallery() {
             <aside className="flex flex-col justify-between gap-6 border-t border-[var(--line)] bg-[rgba(248,245,239,0.88)] p-6 text-[var(--ink)] lg:border-l lg:border-t-0">
               <div>
                 <div className="flex items-center justify-between gap-4">
-                  <p className="eyebrow text-[var(--muted)]">Current Item</p>
+                  <p className="eyebrow text-[var(--muted)]">当前图片</p>
                   <button
                     type="button"
                     onClick={() => setActiveImage(null)}
                     className="button-ghost px-4 py-3"
                   >
-                    Close
+                    关闭
                   </button>
                 </div>
                 <h3 className="mt-5 break-words font-display text-4xl leading-tight text-[var(--ink)]">
@@ -887,7 +887,7 @@ export default function ImageGallery() {
 
               <div className="grid gap-4">
                 <div className="rounded-[14px] border border-[var(--line)] bg-[rgba(255,255,255,0.54)] p-4">
-                  <p className="eyebrow text-[var(--muted)]">Metadata</p>
+                  <p className="eyebrow text-[var(--muted)]">文件信息</p>
                   <div className="mt-4 space-y-3 text-sm text-[var(--ink-soft)]">
                     <div className="flex justify-between gap-4">
                       <span>文件大小</span>
@@ -906,17 +906,17 @@ export default function ImageGallery() {
 
                 <div className="grid grid-cols-3 gap-2">
                   <button
-                    onClick={() => void copyToClipboard(activeImage.url)}
+                    onClick={() => void copyToClipboard(activeImage.url, '链接')}
                     className={getActionButtonClass('secondary')}
                   >
                     复制
                   </button>
                   <button
-                    onClick={() => void copyToClipboard(`![Image](${activeImage.url})`)}
+                    onClick={() => void copyToClipboard(`![Image](${activeImage.url})`, 'Markdown')}
                     className={getActionButtonClass('ghost')}
                     title="复制 Markdown"
                   >
-                    MD
+                    Markdown
                   </button>
                   <button
                     onClick={() => void deleteImage(activeImage.key)}

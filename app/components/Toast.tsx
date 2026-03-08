@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ToastProps {
   message: string;
@@ -99,8 +100,18 @@ interface ToastManagerProps {
 }
 
 export function ToastManager({ toasts, removeToast }: ToastManagerProps) {
-  return (
-    <div className="pointer-events-none fixed inset-x-0 top-4 z-[100] flex flex-col items-center gap-3 px-4">
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(
+    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[100] flex flex-col items-center gap-3 px-4">
       {toasts.map((toast) => (
         <div key={toast.id} className="pointer-events-auto w-full max-w-[460px]">
           <Toast
@@ -111,6 +122,7 @@ export function ToastManager({ toasts, removeToast }: ToastManagerProps) {
           />
         </div>
       ))}
-    </div>
+    </div>,
+    document.body
   );
 }

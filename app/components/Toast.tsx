@@ -25,13 +25,13 @@ export default function Toast({ message, type = 'success', duration = 3000, onCl
   const getTypeStyles = () => {
     switch (type) {
       case 'success':
-        return 'border-[rgba(63,122,97,0.35)] bg-[rgba(248,255,251,0.98)] text-[var(--ink)]';
+        return 'border-[rgba(5,150,105,0.3)] bg-[rgba(236,253,245,0.96)] text-[var(--ink)]';
       case 'error':
-        return 'border-[rgba(178,79,68,0.38)] bg-[rgba(255,246,242,0.98)] text-[var(--ink)]';
+        return 'border-[rgba(220,38,38,0.3)] bg-[rgba(254,242,242,0.96)] text-[var(--ink)]';
       case 'info':
-        return 'border-[rgba(74,119,143,0.36)] bg-[rgba(246,251,255,0.98)] text-[var(--ink)]';
+        return 'border-[rgba(59,130,246,0.28)] bg-[rgba(239,246,255,0.96)] text-[var(--ink)]';
       default:
-        return 'border-[rgba(63,122,97,0.35)] bg-[rgba(248,255,251,0.98)] text-[var(--ink)]';
+        return 'border-[rgba(5,150,105,0.3)] bg-[rgba(236,253,245,0.96)] text-[var(--ink)]';
     }
   };
 
@@ -39,34 +39,11 @@ export default function Toast({ message, type = 'success', duration = 3000, onCl
     <div
       role="status"
       aria-live="polite"
-      className={`w-full rounded-[16px] border px-5 py-4 shadow-[0_20px_44px_rgba(24,30,24,0.2)] backdrop-blur transition-all duration-300 ${
-        visible ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
+      className={`w-full rounded-lg border px-4 py-2.5 text-sm font-medium shadow-[0_10px_28px_rgba(15,23,42,0.14)] backdrop-blur transition-all duration-200 ${
+        visible ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
       } ${getTypeStyles()}`}
     >
-      <div className="flex items-start space-x-3">
-        {type === 'success' && (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[rgba(94,125,102,0.14)] text-[var(--success)]">
-            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-          </div>
-        )}
-        {type === 'error' && (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[rgba(167,96,82,0.14)] text-[var(--danger)]">
-            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-          </div>
-        )}
-        {type === 'info' && (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[rgba(86,109,90,0.14)] text-[var(--accent)]">
-            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-          </div>
-        )}
-        <p className="min-w-0 text-sm font-semibold leading-6">{message}</p>
-      </div>
+      <p className="truncate leading-6">{message}</p>
     </div>
   );
 }

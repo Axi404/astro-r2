@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ToastManager } from './Toast';
 import { useToast } from '../hooks/useToast';
 
@@ -33,6 +33,8 @@ interface DeleteImagesResponse {
   error?: string;
   details?: string;
 }
+
+type SortOrder = 'time-desc' | 'time-asc';
 
 const IMAGES_PER_PAGE = 60;
 
@@ -123,6 +125,8 @@ export default function ImageGallery() {
   const [actionLoading, setActionLoading] = useState(false);
   const [activeImage, setActiveImage] = useState<ImageInfo | null>(null);
   const [loadedCount, setLoadedCount] = useState(0);
+  const [sortOrder, setSortOrder] = useState<SortOrder>('time-desc');
+  const [searchQuery, setSearchQuery] = useState('');
   const { toasts, removeToast, showSuccess, showError, showInfo } = useToast();
 
   const currentCursor = cursorHistory[pageIndex] ?? null;
@@ -342,12 +346,25 @@ export default function ImageGallery() {
   };
 
   const selectAllImages = () => {
-    if (selectedImages.size === images.length) {
-      setSelectedImages(new Set());
+    const visibleKeys = visibleImages.map((image) => image.key);
+    if (visibleKeys.length === 0) {
       return;
     }
 
-    setSelectedImages(new Set(images.map((image) => image.key)));
+    setSelectedImages((prev) => {
+      const next = new Set(prev);
+      const shouldClear = visibleKeys.every((key) => next.has(key));
+
+      visibleKeys.forEach((key) => {
+        if (shouldClear) {
+          next.delete(key);
+        } else {
+          next.add(key);
+        }
+      });
+
+      return next;
+    });
   };
 
   const goToPreviousPage = () => {
@@ -394,7 +411,37 @@ export default function ImageGallery() {
     await loadPage(currentCursor);
   };
 
-  const isAllSelected = images.length > 0 && selectedImages.size === images.length;
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const visibleImages = useMemo(() => {
+    const filtered = normalizedSearch
+      ? images.filter((image) =>
+          getDisplayName(image.key).toLowerCase().includes(normalizedSearch)
+        )
+      : images;
+
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
+      const aTime = Date.parse(a.uploadedAt);
+      const bTime = Date.parse(b.uploadedAt);
+      const safeATime = Number.isNaN(aTime) ? 0 : aTime;
+      const safeBTime = Number.isNaN(bTime) ? 0 : bTime;
+      if (sortOrder === 'time-asc') {
+        return safeATime - safeBTime;
+      }
+
+      return safeBTime - safeATime;
+    });
+
+    return sorted;
+  }, [images, normalizedSearch, sortOrder]);
+
+  const isAllSelected =
+    visibleImages.length > 0 &&
+    visibleImages.every((image) => selectedImages.has(image.key));
+  const visibleSelectedCount = visibleImages.filter((image) =>
+    selectedImages.has(image.key)
+  ).length;
+  const hasSearch = normalizedSearch.length > 0;
   const viewLabel = viewMode === 'grid' ? '网格' : '列表';
   const browseLabel = browseMode === 'all' ? '全部模式' : `第 ${pageIndex + 1} 页`;
 
@@ -451,41 +498,39 @@ export default function ImageGallery() {
     <>
       <div className="space-y-6">
         <section className="panel panel-light p-5 sm:p-6">
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
-            <div className="min-w-0">
-              <p className="eyebrow text-[var(--muted)]">图库管理</p>
-              <div className="mt-4 flex flex-wrap gap-x-8 gap-y-4">
-                <div className="min-w-[6.5rem]">
-                  <p className="font-display text-[2.5rem] leading-none text-[var(--ink)]">
-                    {loadedCount}
-                  </p>
-                  <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-                    当前载入
-                  </p>
-                </div>
-                <div className="min-w-[6.5rem]">
-                  <p className="font-display text-[2.5rem] leading-none text-[var(--ink)]">
-                    {selectedImages.size}
-                  </p>
-                  <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-                    已选中
-                  </p>
-                </div>
-                <div className="min-w-[8rem]">
-                  <p className="font-display text-[2.1rem] leading-none text-[var(--ink)]">
-                    {viewMode === 'grid' ? '网格' : '列表'}
-                  </p>
-                  <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-                    {browseLabel}
-                  </p>
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,28rem)] lg:items-start">
+            <div className="min-w-0 space-y-4">
+              <div>
+                <p className="eyebrow text-[var(--muted)]">图库管理</p>
+                <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--ink-soft)]">
+                  <span>当前载入 {loadedCount}</span>
+                  <span>当前显示 {visibleImages.length}</span>
+                  <span>已选中 {selectedImages.size}</span>
+                  <span>{browseLabel}</span>
+                  <span>{viewLabel}</span>
                 </div>
               </div>
-              <p className="mt-4 max-w-2xl text-sm leading-8 text-[var(--ink-soft)]">
-                右侧可控制读取范围、视图和批量操作，主区域专注看图和筛选。
-              </p>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="按文件名搜索..."
+                  className="input-surface w-full px-3 py-2 text-sm"
+                />
+                {hasSearch ? (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="button-secondary px-3 py-2"
+                  >
+                    清空
+                  </button>
+                ) : null}
+              </div>
             </div>
 
-            <div className="grid gap-3 xl:min-w-[25rem]">
+            <div className="grid gap-2">
               <div className="rounded-[16px] border border-[var(--line)] bg-[rgba(255,252,247,0.68)] p-2">
                 <div className="mb-2 flex items-center justify-between px-3">
                   <p className="eyebrow text-[var(--muted)]">读取范围</p>
@@ -511,7 +556,7 @@ export default function ImageGallery() {
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-2">
                 <div className="rounded-[16px] border border-[var(--line)] bg-[rgba(255,252,247,0.68)] p-2">
                   <div className="mb-2 flex items-center justify-between px-3">
                     <p className="eyebrow text-[var(--muted)]">视图</p>
@@ -537,34 +582,59 @@ export default function ImageGallery() {
 
                 <div className="rounded-[16px] border border-[var(--line)] bg-[rgba(255,252,247,0.68)] p-2">
                   <div className="mb-2 flex items-center justify-between px-3">
-                    <p className="eyebrow text-[var(--muted)]">操作</p>
+                    <p className="eyebrow text-[var(--muted)]">时间排序</p>
                     <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-                      {selectedImages.size > 0 ? `已选 ${selectedImages.size}` : '可操作'}
+                      {sortOrder === 'time-desc' ? '最新优先' : '最早优先'}
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button
-                      onClick={selectAllImages}
-                      disabled={images.length === 0 || actionLoading}
-                      className="button-secondary px-4 py-2.5 disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => setSortOrder('time-desc')}
+                      className={getToggleButtonClass(sortOrder === 'time-desc')}
                     >
-                      {isAllSelected ? '取消全选' : '全选'}
+                      新到旧
                     </button>
                     <button
-                      onClick={() => void handleRefresh()}
-                      disabled={loading || actionLoading || loadingAll}
-                      className="button-secondary px-4 py-2.5 disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => setSortOrder('time-asc')}
+                      className={getToggleButtonClass(sortOrder === 'time-asc')}
                     >
-                      刷新
-                    </button>
-                    <button
-                      onClick={() => void deleteSelectedImages()}
-                      disabled={selectedImages.size === 0 || actionLoading}
-                      className="button-danger px-4 py-2.5 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {actionLoading ? '处理中...' : '删除'}
+                      旧到新
                     </button>
                   </div>
+                </div>
+              </div>
+
+              <div className="rounded-[16px] border border-[var(--line)] bg-[rgba(255,252,247,0.68)] p-2">
+                <div className="mb-2 flex items-center justify-between px-3">
+                  <p className="eyebrow text-[var(--muted)]">操作</p>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+                    {visibleSelectedCount > 0
+                      ? `当前页已选 ${visibleSelectedCount}`
+                      : '可操作'}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={selectAllImages}
+                    disabled={visibleImages.length === 0 || actionLoading}
+                    className="button-secondary px-4 py-2.5 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isAllSelected ? '取消全选' : '全选可见'}
+                  </button>
+                  <button
+                    onClick={() => void handleRefresh()}
+                    disabled={loading || actionLoading || loadingAll}
+                    className="button-secondary px-4 py-2.5 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    刷新
+                  </button>
+                  <button
+                    onClick={() => void deleteSelectedImages()}
+                    disabled={selectedImages.size === 0 || actionLoading}
+                    className="button-danger px-4 py-2.5 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {actionLoading ? '处理中...' : '删除'}
+                  </button>
                 </div>
               </div>
             </div>
@@ -585,9 +655,25 @@ export default function ImageGallery() {
               去上传图片
             </a>
           </div>
+        ) : visibleImages.length === 0 ? (
+          <div className="panel panel-light p-12 text-center sm:p-14">
+            <p className="eyebrow text-[var(--muted)]">无搜索结果</p>
+            <p className="mt-4 font-display text-4xl text-[var(--ink)]">
+              没找到匹配的文件名
+            </p>
+            <p className="mt-3 text-sm leading-8 text-[var(--muted)]">
+              试试其他关键词，或清空搜索。
+            </p>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="button-secondary mt-7"
+            >
+              清空搜索
+            </button>
+          </div>
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            {images.map((image, index) => (
+            {visibleImages.map((image, index) => (
               <article
                 key={image.key}
                 className={`group overflow-hidden rounded-[18px] border bg-[rgba(255,252,247,0.78)] shadow-[0_14px_34px_rgba(32,30,24,0.05)] transition-all duration-300 ${
@@ -698,12 +784,12 @@ export default function ImageGallery() {
                 <span>全选当前结果</span>
               </label>
               <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-                共 {images.length} 项
+                共 {visibleImages.length} 项
               </div>
             </div>
 
             <div className="mt-3 space-y-3">
-              {images.map((image, index) => (
+              {visibleImages.map((image, index) => (
                 <article
                   key={image.key}
                   className={`rounded-[16px] border bg-[rgba(255,252,247,0.72)] p-4 transition-all duration-300 ${
@@ -804,7 +890,8 @@ export default function ImageGallery() {
               <div>
                 <p className="eyebrow text-[var(--muted)]">分页浏览</p>
                 <p className="mt-2 text-sm leading-7 text-[var(--ink-soft)]">
-                  第 {pageIndex + 1} 页，当前 {images.length} 张{nextCursor ? '，后面还有更多' : '，已经到尾页'}
+                  第 {pageIndex + 1} 页，当前显示 {visibleImages.length} / {images.length} 张
+                  {nextCursor ? '，后面还有更多' : '，已经到尾页'}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -815,7 +902,7 @@ export default function ImageGallery() {
                 >
                   上一页
                 </button>
-                <div className="status-pill bg-[var(--night)] text-[var(--paper-strong)]">
+                <div className="status-pill bg-[var(--ink)] text-[var(--paper-strong)]">
                   {pageIndex + 1}
                 </div>
                 <button
@@ -836,7 +923,7 @@ export default function ImageGallery() {
               <div>
                 <p className="eyebrow text-[var(--muted)]">全量读取完成</p>
                 <p className="mt-2 text-sm leading-7 text-[var(--ink-soft)]">
-                  已在当前页面加载全部 {images.length} 张内容，可直接滚动浏览。
+                  已加载 {images.length} 张，当前显示 {visibleImages.length} 张。
                 </p>
               </div>
               <div className="status-pill text-[var(--ink-soft)]">

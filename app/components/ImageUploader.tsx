@@ -275,12 +275,11 @@ export default function ImageUploader() {
     };
   }, []);
 
-  const replacePreviews = (images: PreviewImage[]) => {
-    compressionRunIdRef.current += 1;
-    setPreviewImages((prev) => {
-      prev.forEach(revokePreviewUrls);
-      return images;
-    });
+  const appendPreviews = (images: PreviewImage[]) => {
+    const nextImages = [...previewImagesRef.current, ...images];
+    previewImagesRef.current = nextImages;
+    setPreviewImages(nextImages);
+    return nextImages;
   };
 
   const handleDragEnter = useCallback((event: DragEvent<HTMLDivElement>) => {
@@ -316,8 +315,8 @@ export default function ImageUploader() {
       isProcessing: enableWebpCompression && canCompress(file),
     }));
 
-    replacePreviews(nextPreviewImages);
-    await syncCompressionState(nextPreviewImages, quality, enableWebpCompression);
+    const mergedPreviewImages = appendPreviews(nextPreviewImages);
+    await syncCompressionState(mergedPreviewImages, quality, enableWebpCompression);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
